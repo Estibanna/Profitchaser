@@ -5,7 +5,8 @@ import json
 import sqlite3
 import os
 from datetime import datetime, timezone
-
+TOKEN = os.getenv("TOKEN")
+bot.run(TOKEN)
 with open("config.json") as f:
     config = json.load(f)
 
