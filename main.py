@@ -7,8 +7,6 @@ import os
 from datetime import datetime, timezone
 TOKEN = os.getenv("TOKEN")
 bot.run(TOKEN)
-with open("config.json") as f:
-    config = json.load(f)
 
 intents = discord.Intents.default()
 intents.message_content = True
