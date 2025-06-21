@@ -12,6 +12,11 @@ intents = discord.Intents.default()
 intents.message_content = True
 bot = commands.Bot(command_prefix="!", intents=intents)
 
+@bot.event
+async def on_ready():
+    print(f'✅ Logged in as {bot.user}')
+
+
 conn = sqlite3.connect("data/flips.db")
 c = conn.cursor()
 c.execute("""
