@@ -141,4 +141,4 @@ async def top(ctx, scope=None):
         msg += f"{{i}}. {{user.name}}: {{int(total):,}} gp\n"
     await ctx.send(msg)
 
-bot.run(config["TOKEN"])
+bot.run(os.getenv("TOKEN"))
