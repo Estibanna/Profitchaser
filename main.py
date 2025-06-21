@@ -138,7 +138,7 @@ async def top(ctx, scope=None):
     msg = "**🏆 Top flippers:**\n"
     for i, (uid, total) in enumerate(rows, 1):
         user = await bot.fetch_user(uid)
-        msg += f"{{i}}. {{user.name}}: {{int(total):,}} gp\n"
+        msg += f"{i}. {user.name}: {int(total):,} gp\n"
     await ctx.send(msg)
 
 bot.run(os.getenv("TOKEN"))
