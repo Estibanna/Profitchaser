@@ -6,7 +6,7 @@ import sqlite3
 import os
 from datetime import datetime, timezone
 TOKEN = os.getenv("TOKEN")
-bot.run(TOKEN)
+
 
 intents = discord.Intents.default()
 intents.message_content = True
