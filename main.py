@@ -107,7 +107,7 @@ async def stock(ctx):
         return
     msg = "**📦 Your inventory:**\n"
     for item, qty in rows:
-        msg += f"- {{item}} x{{qty}}\n"
+        msg += f"•  {item} x{qty}\n"
     await ctx.send(msg)
 
 @bot.command()
