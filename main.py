@@ -3,6 +3,9 @@ from discord.ext import commands
 import sqlite3
 import os
 from datetime import datetime, timezone
+import asyncio
+from utils.export import export_trades_html
+from utils.uploader import upload_file_to_host
 
 # Setup
 TOKEN = os.getenv("TOKEN")
@@ -110,11 +113,18 @@ async def record_sell(ctx, args):
         await ctx.send("❌ Invalid input for sell. Use `!nis <item> <price> [x<qty>]`")
         print(e)
 
+    async def auto_upload_loop():
+        while True:
+            export_trades_html()
+            upload_file_to_host("trades.html", "public_html/trades/index.html")
+            await asyncio.sleep(300)  # elke 5 minuten
+
 # Commands
 
 @bot.event
 async def on_ready():
     print(f"✅ Logged in as {bot.user}")
+    bot.loop.create_task(auto_upload_loop())
 
 @bot.command()
 async def nib(ctx, *args):
