@@ -229,8 +229,12 @@ async def reset(ctx, scope=None):
         else:
             c.execute("INSERT INTO flips (user_id, item, price, qty, type) VALUES (?, ?, 0, ?, 'buy')", (ctx.author.id, item, qty))
 
-        # Verwijder laatst geregistreerde winst
-        c.execute("DELETE FROM profits WHERE user_id=? ORDER BY timestamp DESC LIMIT 1", (ctx.author.id,))
+        # Verwijder laatst geregistreerde winst (correcte aanpak)
+        c.execute("SELECT rowid FROM profits WHERE user_id=? ORDER BY timestamp DESC LIMIT 1", (ctx.author.id,))
+        profit_row = c.fetchone()
+        if profit_row:
+            c.execute("DELETE FROM profits WHERE rowid=?", (profit_row[0],))
+
         conn.commit()
         await ctx.send(f"↩️ Last sell of `{item}` has been undone and {qty}x returned to inventory.")
         return
@@ -245,6 +249,7 @@ async def reset(ctx, scope=None):
         return
 
     await ctx.send("⚠️ You have no flips to reset.")
+
 
 
     
