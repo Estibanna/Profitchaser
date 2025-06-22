@@ -3,7 +3,7 @@ from discord.ext import commands
 import sqlite3
 import os
 from datetime import datetime, timezone, timedelta
-
+end_time = start_time + timedelta(days=3)
 
 # Setup
 TOKEN = os.getenv("TOKEN")
