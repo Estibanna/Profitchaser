@@ -3,7 +3,7 @@ from discord.ext import commands
 import sqlite3
 import os
 from datetime import datetime, timezone, timedelta
-
+from keep_alive import keep_alive
 
 # Setup
 TOKEN = os.getenv("TOKEN")
@@ -53,7 +53,7 @@ try:
 except sqlite3.OperationalError:
     pass  # Kolom bestaat al, negeer de fout
 
-
+keep_alive()
 
 conn.commit()
 
