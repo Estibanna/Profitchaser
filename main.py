@@ -171,7 +171,7 @@ async def top(ctx, scope=None):
     else:
         c.execute("SELECT user_id, SUM(profit) FROM profits WHERE month=? GROUP BY user_id ORDER BY SUM(profit) DESC LIMIT 10",
                   (now.strftime("%Y-%m"),))
-        title = "**📆 Top flippers this month:**\n"
+        title = "**🏆 Top flippers this month:**\n"
 
     rows = c.fetchall()
     if not rows:
