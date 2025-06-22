@@ -40,11 +40,15 @@ CREATE TABLE IF NOT EXISTS profits (
 # Database setup (plaats dit na je andere CREATE TABLES)
 try:
     c.execute("ALTER TABLE profits ADD COLUMN item TEXT")
+conn.commit()
 except sqlite3.OperationalError:
     pass  # Kolom bestaat al, geen probleem
 
 
-conn.commit()
+
+
+
+
 
 # Price parsing
 
@@ -139,45 +143,48 @@ async def record_buy(ctx, args):
      #   await ctx.send("❌ Invalid input for sell. Use `!nis <item> <price> [x<qty>]`")
      #   print(e)
 
-async def record_sell(ctx, args):
+@bot.command()
+async def nis(ctx, *, args):
     try:
         item, price, qty = parse_item_args(args)
         sell_price = price * 0.98
+
         c.execute("SELECT rowid, price, qty FROM flips WHERE user_id=? AND item=? AND type='buy' ORDER BY timestamp",
                   (ctx.author.id, item))
         rows = c.fetchall()
+
         remaining = qty
-        profit = 0
-        item_profits = {}  # Nieuw: per item winst bijhouden
+        total_profit = 0
 
         for rowid, buy_price, buy_qty in rows:
             if remaining == 0:
                 break
+
             used = min(remaining, buy_qty)
-            single_profit = (sell_price - buy_price) * used
-            profit += single_profit
-            item_profits[item] = item_profits.get(item, 0) + single_profit
+            profit = (sell_price - buy_price) * used
+            total_profit += profit
 
             new_qty = buy_qty - used
             if new_qty == 0:
                 c.execute("DELETE FROM flips WHERE rowid=?", (rowid,))
             else:
                 c.execute("UPDATE flips SET qty=? WHERE rowid=?", (new_qty, rowid))
+
             remaining -= used
 
         if qty - remaining > 0:
             now = datetime.now(timezone.utc)
+            # ✅ Voeg item toe aan profits
+            c.execute("""INSERT INTO profits (user_id, profit, timestamp, month, year, item) 
+                         VALUES (?, ?, ?, ?, ?, ?)""",
+                      (ctx.author.id, total_profit, now.isoformat(), now.strftime("%Y-%m"), now.strftime("%Y"), item))
 
-            # Per item in item_profits een entry aanmaken
-            for itm, prof in item_profits.items():
-                c.execute("INSERT INTO profits (user_id, profit, timestamp, month, year, item) VALUES (?, ?, ?, ?, ?, ?)",
-                          (ctx.author.id, prof, now.isoformat(), now.strftime("%Y-%m"), now.strftime("%Y"), itm))
-
-            # Voeg de sell toe aan flips zodat !reset werkt
+            # Voeg sell toe aan flips zodat !reset werkt
             c.execute("INSERT INTO flips (user_id, item, price, qty, type) VALUES (?, ?, ?, ?, 'sell')",
                       (ctx.author.id, item, price, qty))
 
             conn.commit()
+            await ctx.send(f"✅ Sold {qty}x {item} for {price} gp each. Profit recorded.")
         else:
             await ctx.send("⚠️ Not enough stock to sell.")
 
