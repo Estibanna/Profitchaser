@@ -267,6 +267,30 @@ async def year(ctx):
     await ctx.send(f"📈 Your profit this year: {total:,} gp")
 from ftplib import FTP
 
+@bot.command()
+async def payed(ctx, *args):
+    item = " ".join(args).lower()
+    c.execute("""
+        SELECT price, SUM(qty) as total_qty, SUM(price * qty) as total_paid 
+        FROM flips 
+        WHERE user_id = ? AND item = ? AND type = 'buy' 
+        GROUP BY price ORDER BY price DESC
+    """, (ctx.author.id, item))
+    rows = c.fetchall()
 
+    if not rows:
+        await ctx.send(f"❌ No purchases found for `{item}`.")
+        return
+
+    msg = f"📊 You paid for: **{item}**\n"
+    total_qty = 0
+    total_sum = 0
+    for price, qty, paid in rows:
+        msg += f"• {int(qty)}x at {int(price):,} gp\n"
+        total_qty += qty
+        total_sum += paid
+
+    msg += f"**Total:** {int(total_qty)} items, {int(total_sum):,} gp"
+    await ctx.send(msg)
 
 bot.run(TOKEN)
