@@ -44,6 +44,7 @@ CREATE TABLE IF NOT EXISTS watchlist (
     max_price REAL
 )
 """)
+
 conn.commit()
 
 
@@ -499,10 +500,10 @@ async def duel(ctx, opponent: discord.Member):
         return
 
     start_time = datetime.now(timezone.utc)
-    end_time = start_time + timedelta(days=3)
+    end_time = start_time + timedelta(days=1)
     active_duels[key] = start_time
 
-    await ctx.send(f"🏁 Duel started between <@{user1}> and <@{user2}>! Ends in 3 days.")
+    await ctx.send(f"🏁 Duel started between <@{user1}> and <@{user2}>! Ends in 24h.")
 
 @bot.command()
 async def duelscore(ctx, opponent: discord.Member):
