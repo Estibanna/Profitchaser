@@ -36,6 +36,15 @@ CREATE TABLE IF NOT EXISTS profits (
     year TEXT
 )
 """)
+c.execute("""
+CREATE TABLE IF NOT EXISTS watchlist (
+    user_id INTEGER,
+    item TEXT,
+    max_price REAL
+)
+""")
+conn.commit()
+
 
 try:
     c.execute("ALTER TABLE profits ADD COLUMN item TEXT")
@@ -126,8 +135,21 @@ async def record_sell(ctx, args):
             # Voeg de sell toe aan flips zodat !reset werkt
             c.execute("INSERT INTO flips (user_id, item, price, qty, type) VALUES (?, ?, ?, ?, 'sell')",
                       (ctx.author.id, item, price, qty))
+                    # Notificeer watchers
+            c.execute("SELECT user_id FROM watchlist WHERE item=? AND max_price >= ?", (item, price))
+            watchers = c.fetchall()
+            for watcher_id in watchers:
+                user = await bot.fetch_user(watcher_id[0])
+                try:
+                    await user.send(f"🔔 `{item}` has been sold for {int(price):,} gp or less!")
+                    # Verwijder de watchlist-entry na melding
+                    c.execute("DELETE FROM watchlist WHERE user_id=? AND item=? AND max_price=?", (watcher_id[0], item, price))
+                except:
+                    pass  # gebruiker staat DM's niet toe
+    
+             
+           
             
-
             conn.commit()
 
             # Check of iemand deze item trackt (watchlist-alert)
@@ -504,6 +526,34 @@ async def duelscore(ctx, opponent: discord.Member):
     await ctx.send(f"📊 Duel score:\n<@{user1}>: {scores[user1]:,.0f} gp\n<@{user2}>: {scores[user2]:,.0f} gp")
 
 
+@bot.command()
+async def watch(ctx, item: str, price: str):
+    try:
+        parsed_price = parse_price(price)
+        c.execute("INSERT INTO watchlist (user_id, item, max_price) VALUES (?, ?, ?)",
+                  (ctx.author.id, item.lower(), parsed_price))
+        conn.commit()
+        await ctx.send(f"🔔 Watching `{item}` for {int(parsed_price):,} gp or less.")
+    except Exception as e:
+        await ctx.send("❌ Usage: `!watch item price`")
+        print(e)
 
+@bot.command()
+async def unwatch(ctx, *, item: str):
+    c.execute("DELETE FROM watchlist WHERE user_id=? AND item=?", (ctx.author.id, item.lower()))
+    conn.commit()
+    await ctx.send(f"❌ Stopped watching `{item}`.")
+
+@bot.command()
+async def mywatchlist(ctx):
+    c.execute("SELECT item, max_price FROM watchlist WHERE user_id=?", (ctx.author.id,))
+    rows = c.fetchall()
+    if not rows:
+        await ctx.send("📭 You're not watching any items.")
+        return
+    msg = "**👁️ Your watchlist:**\n"
+    for item, price in rows:
+        msg += f"• {item} ≤ {int(price):,} gp\n"
+    await ctx.send(msg)
 
 bot.run(TOKEN)
