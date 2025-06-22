@@ -3,10 +3,9 @@ from discord.ext import commands
 import sqlite3
 import os
 from datetime import datetime, timezone
-import asyncio
-from utils.export import export_trades_html
-from utils.uploader import upload_file_to_host
-from jinja2 import Template
+
+
+
 
 # Setup
 TOKEN = os.getenv("TOKEN")
@@ -114,35 +113,8 @@ async def record_sell(ctx, args):
         await ctx.send("❌ Invalid input for sell. Use `!nis <item> <price> [x<qty>]`")
         print(e)
 
-def export_trades_html():
-    conn = sqlite3.connect("data/flips.db")
-    c = conn.cursor()
-    c.execute("SELECT timestamp, item, price, qty, type FROM flips ORDER BY timestamp DESC LIMIT 100")
-    rows = c.fetchall()
-    conn.close()
-
-    with open("template/trades_template.html") as f:
-        html_template = Template(f.read())
-    
-    rendered = html_template.render(trades=rows)
-
-    with open("trades.html", "w", encoding="utf-8") as f:
-        f.write(rendered)
 
 
-def upload_file_to_host(local_path, remote_path):
-    ftp = FTP("ftp.edflipping.com")
-    ftp.login(user="jouwgebruikersnaam", passwd="jouwwachtwoord")
-    with open(local_path, "rb") as f:
-        ftp.storbinary(f"STOR " + remote_path, f)
-    ftp.quit()
-    
-
-async def auto_upload_loop():
-    while True:
-        export_trades_html()
-        upload_file_to_host("trades.html", "public_html/trades/index.html")
-        await asyncio.sleep(300)  # elke 5 minuten
 
 # Commands
 
