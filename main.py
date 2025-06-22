@@ -120,13 +120,14 @@ async def record_sell(ctx, args):
             now = datetime.now(timezone.utc)
             c.execute("INSERT INTO profits (user_id, profit, timestamp, month, year) VALUES (?, ?, ?, ?, ?)",
                       (ctx.author.id, profit, now.isoformat(), now.strftime("%Y-%m"), now.strftime("%Y")))
+        
+            # Voeg de sell toe aan flips zodat !reset werkt
+            c.execute("INSERT INTO flips (user_id, item, price, qty, type) VALUES (?, ?, ?, ?, 'sell')",
+                      (ctx.author.id, item, price, qty))
+        
             conn.commit()
-            #await ctx.send(f"💰 Sold {qty - remaining} x {item} for a profit of {int(profit):,} gp.")
         else:
             await ctx.send("⚠️ Not enough stock to sell.")
-    except Exception as e:
-        await ctx.send("❌ Invalid input for sell. Use `!nis <item> <price> [x<qty>]`")
-        print(e)
 
 
 
