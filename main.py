@@ -173,9 +173,8 @@ async def top(ctx, scope=None):
         user = await bot.fetch_user(uid)
         msg += f"{i}. {user.name}: {int(total):,} gp\n"
     await ctx.send(msg)
-
-
-    @bot.command()
+    
+@bot.command()
 async def reset(ctx, scope=None):
     if scope == "all":
         c.execute("DELETE FROM flips WHERE user_id=?", (ctx.author.id,))
