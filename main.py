@@ -174,4 +174,22 @@ async def top(ctx, scope=None):
         msg += f"{i}. {user.name}: {int(total):,} gp\n"
     await ctx.send(msg)
 
+
+    @bot.command()
+async def reset(ctx, scope=None):
+    if scope == "all":
+        c.execute("DELETE FROM flips WHERE user_id=?", (ctx.author.id,))
+        c.execute("DELETE FROM profits WHERE user_id=?", (ctx.author.id,))
+        conn.commit()
+        await ctx.send("🗑️ All your flip and profit history has been deleted.")
+    else:
+        c.execute("SELECT rowid FROM flips WHERE user_id=? ORDER BY timestamp DESC LIMIT 1", (ctx.author.id,))
+        row = c.fetchone()
+        if row:
+            c.execute("DELETE FROM flips WHERE rowid=?", (row[0],))
+            conn.commit()
+            await ctx.send("↩️ Your last entry has been removed.")
+        else:
+            await ctx.send("⚠️ You have no flips to reset.")
+
 bot.run(TOKEN)
