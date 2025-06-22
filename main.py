@@ -606,8 +606,6 @@ async def help(ctx):
     embed.add_field(name="🪙 Extra Stats", value=(
         "`!flips` – Total flips\n"
         "`!avgprofit` – Average profit per flip\n"
-        "`!bestitem` – Most profitable item\n"
-        "`!losses` – All loss flips"
     ), inline=False)
 
     embed.add_field(name="🎖️ Ranks", value=(
