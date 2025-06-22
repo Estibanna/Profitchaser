@@ -232,4 +232,29 @@ async def delete(ctx, *args):
         print(e)
 
 
+@bot.command()
+async def day(ctx):
+    today = datetime.now(timezone.utc).date().isoformat()
+    c.execute("SELECT SUM(profit) FROM profits WHERE user_id=? AND DATE(timestamp)=?", (ctx.author.id, today))
+    row = c.fetchone()
+    total = int(row[0]) if row and row[0] else 0
+    await ctx.send(f"📅 Your profit today: {total:,} gp")
+
+@bot.command()
+async def month(ctx):
+    current_month = datetime.now(timezone.utc).strftime("%Y-%m")
+    c.execute("SELECT SUM(profit) FROM profits WHERE user_id=? AND month=?", (ctx.author.id, current_month))
+    row = c.fetchone()
+    total = int(row[0]) if row and row[0] else 0
+    await ctx.send(f"📆 Your profit this month: {total:,} gp")
+
+@bot.command()
+async def year(ctx):
+    current_year = datetime.now(timezone.utc).strftime("%Y")
+    c.execute("SELECT SUM(profit) FROM profits WHERE user_id=? AND year=?", (ctx.author.id, current_year))
+    row = c.fetchone()
+    total = int(row[0]) if row and row[0] else 0
+    await ctx.send(f"📈 Your profit this year: {total:,} gp")
+
+
 bot.run(TOKEN)
