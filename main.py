@@ -129,7 +129,9 @@ async def record_sell(ctx, args):
     else:
         await ctx.send("⚠️ Not enough stock to sell.")
 
-
+except Exception as e:
+    await ctx.send("❌ Invalid input for sell. Use `!nis <item> <price> [x<qty>]`")
+    print(e)
 
 
 # Commands
