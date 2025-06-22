@@ -36,6 +36,14 @@ CREATE TABLE IF NOT EXISTS profits (
     year TEXT
 )
 """)
+
+# Database setup (plaats dit na je andere CREATE TABLES)
+try:
+    c.execute("ALTER TABLE profits ADD COLUMN item TEXT")
+except sqlite3.OperationalError:
+    pass  # Kolom bestaat al, geen probleem
+
+
 conn.commit()
 
 # Price parsing
@@ -420,11 +428,11 @@ async def payed(ctx, *args):
 @bot.command()
 async def bestitem(ctx):
     c.execute("""
-        SELECT item, SUM(profit) as total_profit 
-        FROM profits 
-        WHERE user_id = ? 
-        GROUP BY item 
-        ORDER BY total_profit DESC 
+        SELECT item, SUM((price * qty) * CASE WHEN type='sell' THEN 0.98 ELSE -1 END) as profit
+        FROM flips 
+        WHERE user_id = ?
+        GROUP BY item
+        ORDER BY profit DESC
         LIMIT 1
     """, (ctx.author.id,))
     row = c.fetchone()
@@ -432,7 +440,7 @@ async def bestitem(ctx):
         item, total = row
         await ctx.send(f"💎 Your best item is **{item}** with a total profit of {int(total):,} gp.")
     else:
-        await ctx.send("❌ No profit data available.")
+        await ctx.send("❌ No data available.")
 
 
 @bot.command()
