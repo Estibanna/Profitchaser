@@ -57,10 +57,15 @@ async def handle_buy(ctx, args):
         return
     try:
         qty = 1
-        if args[-1].startswith("x"):
-            qty = int(args[-1][1:])
-            price_str = args[-2]
-            item = " ".join(args[:-2])
+        price_str = None
+        item = None
+
+        for i in reversed(range(len(args))):
+            if args[i].lower().startswith("x") and args[i][1:].isdigit():
+                qty = int(args[i][1:])
+                price_str = args[i-1]
+                item = " ".join(args[:i-1])
+                break
         else:
             price_str = args[-1]
             item = " ".join(args[:-1])
@@ -82,15 +87,20 @@ async def handle_sell(ctx, args):
         return
     try:
         qty = 1
-        if args[-1].startswith("x"):
-            qty = int(args[-1][1:])
-            price_str = args[-2]
-            item = " ".join(args[:-2])
+        price_str = None
+        item = None
+
+        for i in reversed(range(len(args))):
+            if args[i].lower().startswith("x") and args[i][1:].isdigit():
+                qty = int(args[i][1:])
+                price_str = args[i-1]
+                item = " ".join(args[:i-1])
+                break
         else:
             price_str = args[-1]
             item = " ".join(args[:-1])
 
-        sell_price = parse_price(price_str) * 0.98
+        price = parse_price(price_str)
         item = item.lower()
 
         c.execute("SELECT rowid, price, qty FROM flips WHERE user_id=? AND item=? AND type='buy' ORDER BY timestamp",
