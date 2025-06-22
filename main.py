@@ -37,6 +37,11 @@ CREATE TABLE IF NOT EXISTS profits (
 )
 """)
 
+try:
+    c.execute("ALTER TABLE profits ADD COLUMN item TEXT")
+    conn.commit()
+except sqlite3.OperationalError:
+    pass  # Kolom bestaat al, negeer de fout
 
 
 
@@ -74,16 +79,7 @@ def parse_item_args(args):
         item_name = " ".join(args[:-1])
 
     return item_name.lower(), parse_price(price_str), qty
-#def parse_item_args(args):
-   # qty = 1
-   # if len(args) >= 3 and args[-1].lower().startswith("x") and args[-1][1:].isdigit():
-   #     qty = int(args[-1][1:])
-   #     price_str = args[-2]
-       # item_name = " ".join(args[:-2])
- #   else:
-    #    price_str = args[-1]
-   #     item_name = " ".join(args[:-1])
- #   return item_name.lower(), parse_price(price_str), qty
+
 
 # Buy handler
 
@@ -96,6 +92,8 @@ async def record_buy(ctx, args):
     except Exception as e:
         await ctx.send("❌ Invalid input for buy. Use `!nib <item> <price> [x<qty>]`")
         print(e)
+
+
 
 # Sell handler
 async def record_sell(ctx, args):
@@ -122,14 +120,25 @@ async def record_sell(ctx, args):
 
         if qty - remaining > 0:
             now = datetime.now(timezone.utc)
-            c.execute("INSERT INTO profits (user_id, profit, timestamp, month, year) VALUES (?, ?, ?, ?, ?)",
-                      (ctx.author.id, profit, now.isoformat(), now.strftime("%Y-%m"), now.strftime("%Y")))
+            c.execute("INSERT INTO profits (user_id, profit, timestamp, month, year, item) VALUES (?, ?, ?, ?, ?, ?)",
+                      (ctx.author.id, profit, now.isoformat(), now.strftime("%Y-%m"), now.strftime("%Y"), item))
 
-            #Voeg de sell toe aan flips zodat !reset werkt
+            # Voeg de sell toe aan flips zodat !reset werkt
             c.execute("INSERT INTO flips (user_id, item, price, qty, type) VALUES (?, ?, ?, ?, 'sell')",
                       (ctx.author.id, item, price, qty))
+            
 
             conn.commit()
+
+            # Check of iemand deze item trackt (watchlist-alert)
+            for user_id, items in user_track_requests.items():
+                for tracked_item, limit_price in items:
+                    if tracked_item == item.lower() and sell_price <= limit_price:
+                        user = await bot.fetch_user(user_id)
+                        if user:
+                            await user.send(f"📉 `{item}` just hit `{price}` (below your `{limit_price}` alert)")
+                            break  # Stuur max 1 bericht per user
+
         else:
             await ctx.send("⚠️ Not enough stock to sell.")
 
@@ -315,22 +324,6 @@ async def reset(ctx, scope=None):
 
 
     
-#@bot.command()
-#async def reset(ctx, scope=None):
-   # if scope == "all":
-     #   c.execute("DELETE FROM flips WHERE user_id=?", (ctx.author.id,))
-      #  c.execute("DELETE FROM profits WHERE user_id=?", (ctx.author.id,))
-     #   conn.commit()
-     #   await ctx.send("🗑️ All your flip and profit history has been deleted.")
-  #  else:
-      #  c.execute("SELECT rowid FROM flips WHERE user_id=? ORDER BY timestamp DESC LIMIT 1", (ctx.author.id,))
-      #  row = c.fetchone()
-     #   if row:
-       #     c.execute("DELETE FROM flips WHERE rowid=?", (row[0],))
-     #       conn.commit()
-   #         await ctx.send("↩️ Your last entry has been removed.")
-     #     else:
-          #  await ctx.send("⚠️ You have no flips to reset.")
 
 @bot.command()
 async def delete(ctx, *args):
@@ -444,6 +437,25 @@ async def flips(ctx):
         await ctx.send(f"🔁 You have completed {row[0]} flips.")
     else:
         await ctx.send("❌ No flips found.")
+
+
+
+
+
+# Globale dict om track requests bij te houden
+user_track_requests = {}
+
+@bot.command()
+async def track(ctx, item: str, price: str):
+    try:
+        gp_price = parse_price(price)  # Zorg dat deze functie bestaat zoals elders in je code
+        user_track_requests.setdefault(ctx.author.id, []).append((item.lower(), gp_price))
+        await ctx.send(f"🔔 Tracking `{item}`. You'll get a DM if it drops below {price}.")
+    except Exception as e:
+        await ctx.send("❌ Usage: `!track [item] [price]`")
+        print(e)
+
+
 
 
 
