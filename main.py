@@ -10,7 +10,7 @@ TOKEN = os.getenv("TOKEN")
 intents = discord.Intents.default()
 intents.message_content = True
 bot = commands.Bot(command_prefix="!", intents=intents)
-
+active_duels = {}  # Dict met (user1_id, user2_id): start_time
 # Ensure data folder exists
 os.makedirs("data", exist_ok=True)
 conn = sqlite3.connect("data/flips.db")
@@ -455,6 +455,53 @@ async def track(ctx, item: str, price: str):
         await ctx.send("❌ Usage: `!track [item] [price]`")
         print(e)
 
+
+
+
+
+
+@bot.command()
+async def duel(ctx, opponent: discord.Member):
+    user1 = ctx.author.id
+    user2 = opponent.id
+
+    if user1 == user2:
+        await ctx.send("⚠️ You can't duel yourself.")
+        return
+
+    key = tuple(sorted((user1, user2)))
+
+    if key in active_duels:
+        await ctx.send("⚔️ A duel between you two is already ongoing.")
+        return
+
+    start_time = datetime.now(timezone.utc)
+    end_time = start_time + timedelta(days=3)
+    active_duels[key] = start_time
+
+    await ctx.send(f"🏁 Duel started between <@{user1}> and <@{user2}>! Ends in 3 days.")
+
+@bot.command()
+async def duelscore(ctx, opponent: discord.Member):
+    user1 = ctx.author.id
+    user2 = opponent.id
+    key = tuple(sorted((user1, user2)))
+
+    if key not in active_duels:
+        await ctx.send("❌ No active duel found between you two.")
+        return
+
+    start_time = active_duels[key]
+
+    c.execute("SELECT user_id, SUM(profit) FROM profits WHERE (user_id=? OR user_id=?) AND timestamp >= ? GROUP BY user_id",
+              (user1, user2, start_time.isoformat()))
+    rows = c.fetchall()
+
+    scores = {user1: 0, user2: 0}
+    for uid, total in rows:
+        scores[uid] = total
+
+    await ctx.send(f"📊 Duel score:\n<@{user1}>: {scores[user1]:,.0f} gp\n<@{user2}>: {scores[user2]:,.0f} gp")
 
 
 
