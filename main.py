@@ -56,6 +56,40 @@ def parse_price(price_str):
 async def nib(ctx, *args):
     await handle_buy(ctx, args)
 
+
+
+async def handle_buy(ctx, args):
+    if len(args) < 2:
+        await ctx.send("Usage: `!nib <item name> <price> [x<qty>]`")
+        return
+
+    try:
+        # default quantity = 1
+        qty = 1
+        if args[-1].startswith("x"):
+            qty = int(args[-1][1:])
+            price_str = args[-2]
+            item = " ".join(args[:-2])
+        else:
+            price_str = args[-1]
+            item = " ".join(args[:-1])
+
+        price = parse_price(price_str)
+        item = item.lower()
+
+        c.execute("INSERT INTO flips (user_id, item, price, qty, type) VALUES (?, ?, ?, ?, ?)",
+                  (ctx.author.id, item, price, qty, "buy"))
+        conn.commit()
+
+    except Exception as e:
+        await ctx.send("❌ Invalid input. Use `!nib <item> <price> [x<qty>]`")
+        print(e)
+
+
+
+
+
+    
     qty = int(extra.replace("x", "")) if "x" in extra else 1
     p = parse_price(price)
     c.execute("INSERT INTO flips (user_id, item, price, qty, type) VALUES (?, ?, ?, ?, ?)",
