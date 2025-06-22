@@ -53,8 +53,12 @@ def parse_price(price_str):
     return float(price_str)
 
 # Generic parser
-
 def parse_item_args(args):
+    args = list(args)
+    # Strip trailing non-qty words like 'stretch', 'gl', 'fast'
+    while args and not args[-1].lower().startswith("x") and not any(c.isdigit() for c in args[-1]):
+        args.pop()
+
     qty = 1
     if len(args) >= 3 and args[-1].lower().startswith("x") and args[-1][1:].isdigit():
         qty = int(args[-1][1:])
@@ -63,7 +67,18 @@ def parse_item_args(args):
     else:
         price_str = args[-1]
         item_name = " ".join(args[:-1])
+
     return item_name.lower(), parse_price(price_str), qty
+#def parse_item_args(args):
+   # qty = 1
+   # if len(args) >= 3 and args[-1].lower().startswith("x") and args[-1][1:].isdigit():
+   #     qty = int(args[-1][1:])
+   #     price_str = args[-2]
+       # item_name = " ".join(args[:-2])
+ #   else:
+    #    price_str = args[-1]
+   #     item_name = " ".join(args[:-1])
+ #   return item_name.lower(), parse_price(price_str), qty
 
 # Buy handler
 
