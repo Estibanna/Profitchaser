@@ -191,4 +191,45 @@ async def reset(ctx, scope=None):
         else:
             await ctx.send("⚠️ You have no flips to reset.")
 
+@bot.command()
+async def delete(ctx, *args):
+    if len(args) < 2:
+        await ctx.send("Usage: `!delete <item> x<qty>`")
+        return
+    try:
+        if args[-1].lower().startswith("x") and args[-1][1:].isdigit():
+            qty = int(args[-1][1:])
+            item = " ".join(args[:-1]).lower()
+        else:
+            await ctx.send("Quantity missing or invalid. Use: `!delete item x<qty>`")
+            return
+
+        c.execute("SELECT rowid, qty FROM flips WHERE user_id=? AND item=? AND type='buy' ORDER BY timestamp",
+                  (ctx.author.id, item))
+        rows = c.fetchall()
+        remaining = qty
+        deleted = 0
+
+        for rowid, available_qty in rows:
+            if remaining == 0:
+                break
+            used = min(remaining, available_qty)
+            new_qty = available_qty - used
+            if new_qty == 0:
+                c.execute("DELETE FROM flips WHERE rowid=?", (rowid,))
+            else:
+                c.execute("UPDATE flips SET qty=? WHERE rowid=?", (new_qty, rowid))
+            remaining -= used
+            deleted += used
+
+        conn.commit()
+        if deleted > 0:
+            await ctx.send(f"🗑️ Deleted {deleted} x {item} from your inventory.")
+        else:
+            await ctx.send("❌ You don't have that item or quantity.")
+    except Exception as e:
+        await ctx.send("❌ Error processing your delete request.")
+        print(e)
+
+
 bot.run(TOKEN)
