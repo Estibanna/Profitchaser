@@ -14,7 +14,7 @@ bot.remove_command('help')
 active_duels = {}  # Dict met (user1_id, user2_id): start_time
 # Ensure data folder exists
 os.makedirs("data", exist_ok=True)
-conn = sqlite3.connect("data/flips.db")
+conn = sqlite3.connect("flips.db")
 c = conn.cursor()
 
 # Database schema
