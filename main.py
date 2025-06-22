@@ -416,4 +416,61 @@ async def payed(ctx, *args):
     msg += f"**Total:** {int(total_qty)} items, {int(total_sum):,} gp"
     await ctx.send(msg)
 
+
+@bot.command()
+async def bestitem(ctx):
+    c.execute("""
+        SELECT item, SUM(profit) as total_profit 
+        FROM profits 
+        WHERE user_id = ? 
+        GROUP BY item 
+        ORDER BY total_profit DESC 
+        LIMIT 1
+    """, (ctx.author.id,))
+    row = c.fetchone()
+    if row:
+        item, total = row
+        await ctx.send(f"💎 Your best item is **{item}** with a total profit of {int(total):,} gp.")
+    else:
+        await ctx.send("❌ No profit data available.")
+
+
+@bot.command()
+async def avgprofit(ctx):
+    c.execute("SELECT AVG(profit) FROM profits WHERE user_id=?", (ctx.author.id,))
+    row = c.fetchone()
+    if row and row[0]:
+        await ctx.send(f"📊 Your average profit per flip is: {int(row[0]):,} gp.")
+    else:
+        await ctx.send("❌ No profit data found.")
+
+@bot.command()
+async def flips(ctx):
+    c.execute("SELECT COUNT(*) FROM profits WHERE user_id=?", (ctx.author.id,))
+    row = c.fetchone()
+    if row:
+        await ctx.send(f"🔁 You have completed {row[0]} flips.")
+    else:
+        await ctx.send("❌ No flips found.")
+
+
+@bot.command()
+async def losses(ctx):
+    c.execute("""
+        SELECT item, profit, timestamp 
+        FROM profits 
+        WHERE user_id=? AND profit < 0 
+        ORDER BY timestamp DESC 
+        LIMIT 10
+    """, (ctx.author.id,))
+    rows = c.fetchall()
+    if not rows:
+        await ctx.send("✅ No losses recorded. Good job!")
+        return
+
+    msg = "**📉 Your recent loss flips:**\n"
+    for item, profit, timestamp in rows:
+        msg += f"- {item}: {int(profit):,} gp on {timestamp[:10]}\n"
+    await ctx.send(msg)
+
 bot.run(TOKEN)
