@@ -104,34 +104,35 @@ async def record_sell(ctx, args):
         remaining = qty
         profit = 0
 
-    for rowid, buy_price, buy_qty in rows:
-        if remaining == 0:
-            break
-        used = min(remaining, buy_qty)
-        profit += (sell_price - buy_price) * used
-        new_qty = buy_qty - used
-        if new_qty == 0:
-            c.execute("DELETE FROM flips WHERE rowid=?", (rowid,))
+        for rowid, buy_price, buy_qty in rows:
+            if remaining == 0:
+                break
+            used = min(remaining, buy_qty)
+            profit += (sell_price - buy_price) * used
+            new_qty = buy_qty - used
+            if new_qty == 0:
+                c.execute("DELETE FROM flips WHERE rowid=?", (rowid,))
+            else:
+                c.execute("UPDATE flips SET qty=? WHERE rowid=?", (new_qty, rowid))
+            remaining -= used
+
+        if qty - remaining > 0:
+            now = datetime.now(timezone.utc)
+            c.execute("INSERT INTO profits (user_id, profit, timestamp, month, year) VALUES (?, ?, ?, ?, ?)",
+                      (ctx.author.id, profit, now.isoformat(), now.strftime("%Y-%m"), now.strftime("%Y")))
+
+            # Voeg de sell toe aan flips zodat !reset werkt
+            c.execute("INSERT INTO flips (user_id, item, price, qty, type) VALUES (?, ?, ?, ?, 'sell')",
+                      (ctx.author.id, item, price, qty))
+
+            conn.commit()
         else:
-            c.execute("UPDATE flips SET qty=? WHERE rowid=?", (new_qty, rowid))
-        remaining -= used
+            await ctx.send("⚠️ Not enough stock to sell.")
 
-    if qty - remaining > 0:
-        now = datetime.now(timezone.utc)
-        c.execute("INSERT INTO profits (user_id, profit, timestamp, month, year) VALUES (?, ?, ?, ?, ?)",
-                  (ctx.author.id, profit, now.isoformat(), now.strftime("%Y-%m"), now.strftime("%Y")))
-    
-        # Voeg de sell toe aan flips zodat !reset werkt
-        c.execute("INSERT INTO flips (user_id, item, price, qty, type) VALUES (?, ?, ?, ?, 'sell')",
-                  (ctx.author.id, item, price, qty))
-    
-        conn.commit()
-    else:
-        await ctx.send("⚠️ Not enough stock to sell.")
+    except Exception as e:
+        await ctx.send("❌ Invalid input for sell. Use `!nis <item> <price> [x<qty>]`")
+        print(e)
 
-except Exception as e:
-    await ctx.send("❌ Invalid input for sell. Use `!nis <item> <price> [x<qty>]`")
-    print(e)
 
 
 # Commands
