@@ -1,12 +1,10 @@
-
 import discord
 from discord.ext import commands
-
 import sqlite3
 import os
 from datetime import datetime, timezone
-TOKEN = os.getenv("TOKEN")
 
+TOKEN = os.getenv("TOKEN")
 
 intents = discord.Intents.default()
 intents.message_content = True
@@ -16,7 +14,8 @@ bot = commands.Bot(command_prefix="!", intents=intents)
 async def on_ready():
     print(f'✅ Logged in as {bot.user}')
 
-
+# Database setup
+os.makedirs("data", exist_ok=True)
 conn = sqlite3.connect("data/flips.db")
 c = conn.cursor()
 c.execute("""
@@ -51,25 +50,12 @@ def parse_price(price_str):
     else:
         return float(price_str)
 
-
-@bot.command()
-async def nib(ctx, *args):
-    await handle_buy(ctx, args)
-
- price = parse_price(price_str)
-        item = item.lower()
-
-        c.execute("INSERT INTO flips (user_id, item, price, qty, type) VALUES (?, ?, ?, ?, ?)",
-                  (ctx.author.id, item, price, qty, "buy"))
-        conn.commit()
-
+# Buy handler
 async def handle_buy(ctx, args):
     if len(args) < 2:
-        await ctx.send("Usage: `!nib <item name> <price> [x<qty>]`")
+        await ctx.send("Usage: `!nib <item> <price> [x<qty>]`")
         return
-
     try:
-        # default quantity = 1
         qty = 1
         if args[-1].startswith("x"):
             qty = int(args[-1][1:])
@@ -79,64 +65,80 @@ async def handle_buy(ctx, args):
             price_str = args[-1]
             item = " ".join(args[:-1])
 
-       
+        price = parse_price(price_str)
+        item = item.lower()
 
+        c.execute("INSERT INTO flips (user_id, item, price, qty, type) VALUES (?, ?, ?, ?, ?)",
+                  (ctx.author.id, item, price, qty, "buy"))
+        conn.commit()
     except Exception as e:
         await ctx.send("❌ Invalid input. Use `!nib <item> <price> [x<qty>]`")
         print(e)
 
-
-
-
-
-    
-    qty = int(extra.replace("x", "")) if "x" in extra else 1
-    p = parse_price(price)
-    c.execute("INSERT INTO flips (user_id, item, price, qty, type) VALUES (?, ?, ?, ?, ?)",
-              (ctx.author.id, item.lower(), p, qty, "buy"))
-    conn.commit()
-
-@bot.command()
-async def inb(ctx, item: str, price: str, *, extra="x1"):
-    await nib(ctx, item, price, extra=extra)
-
-@bot.command()
-async def nis(ctx, item: str, price: str, *, extra="x1"):
-    await handle_sell(ctx, item, price, extra)
-
-@bot.command()
-async def ins(ctx, item: str, price: str, *, extra="x1"):
-    await handle_sell(ctx, item, price, extra)
-
-async def handle_sell(ctx, item, price, extra):
-    qty = int(extra.replace("x", "")) if "x" in extra else 1
-    sell_price = parse_price(price) * 0.98
-    item = item.lower()
-    c.execute("SELECT rowid, price, qty FROM flips WHERE user_id=? AND item=? AND type='buy' ORDER BY timestamp",
-              (ctx.author.id, item))
-    rows = c.fetchall()
-    remaining = qty
-    profit = 0
-    for row in rows:
-        rowid, buy_price, buy_qty = row
-        if remaining == 0:
-            break
-        used_qty = min(remaining, buy_qty)
-        profit += (sell_price - buy_price) * used_qty
-        new_qty = buy_qty - used_qty
-        if new_qty == 0:
-            c.execute("DELETE FROM flips WHERE rowid=?", (rowid,))
+# Sell handler
+async def handle_sell(ctx, args):
+    if len(args) < 2:
+        await ctx.send("Usage: `!nis <item> <price> [x<qty>]`")
+        return
+    try:
+        qty = 1
+        if args[-1].startswith("x"):
+            qty = int(args[-1][1:])
+            price_str = args[-2]
+            item = " ".join(args[:-2])
         else:
-            c.execute("UPDATE flips SET qty=? WHERE rowid=?", (new_qty, rowid))
-        remaining -= used_qty
-   if qty - remaining > 0:
-        now = datetime.now(timezone.utc)
-        c.execute("INSERT INTO profits (user_id, profit, timestamp, month, year) VALUES (?, ?, ?, ?, ?)",
-              (ctx.author.id, profit, now.isoformat(), now.strftime("%Y-%m"), now.strftime("%Y")))
-        await ctx.send(f"💰 Sold {qty - remaining} x {item} for a profit of {int(profit):,} gp.")
-    else:
-        await ctx.send("⚠️ Not enough items in stock to match this sale.")
-    conn.commit()
+            price_str = args[-1]
+            item = " ".join(args[:-1])
+
+        sell_price = parse_price(price_str) * 0.98
+        item = item.lower()
+
+        c.execute("SELECT rowid, price, qty FROM flips WHERE user_id=? AND item=? AND type='buy' ORDER BY timestamp",
+                  (ctx.author.id, item))
+        rows = c.fetchall()
+        remaining = qty
+        profit = 0
+        for row in rows:
+            rowid, buy_price, buy_qty = row
+            if remaining == 0:
+                break
+            used_qty = min(remaining, buy_qty)
+            profit += (sell_price - buy_price) * used_qty
+            new_qty = buy_qty - used_qty
+            if new_qty == 0:
+                c.execute("DELETE FROM flips WHERE rowid=?", (rowid,))
+            else:
+                c.execute("UPDATE flips SET qty=? WHERE rowid=?", (new_qty, rowid))
+            remaining -= used_qty
+
+        if qty - remaining > 0:
+            now = datetime.now(timezone.utc)
+            c.execute("INSERT INTO profits (user_id, profit, timestamp, month, year) VALUES (?, ?, ?, ?, ?)",
+                      (ctx.author.id, profit, now.isoformat(), now.strftime("%Y-%m"), now.strftime("%Y")))
+            await ctx.send(f"💰 Sold {qty - remaining} x {item} for a profit of {int(profit):,} gp.")
+        else:
+            await ctx.send("⚠️ Not enough items in stock to match this sale.")
+        conn.commit()
+    except Exception as e:
+        await ctx.send("❌ Invalid input. Use `!nis <item> <price> [x<qty>]`")
+        print(e)
+
+# Commands
+@bot.command()
+async def nib(ctx, *args):
+    await handle_buy(ctx, args)
+
+@bot.command()
+async def inb(ctx, *args):
+    await handle_buy(ctx, args)
+
+@bot.command()
+async def nis(ctx, *args):
+    await handle_sell(ctx, args)
+
+@bot.command()
+async def ins(ctx, *args):
+    await handle_sell(ctx, args)
 
 @bot.command()
 async def stock(ctx):
@@ -181,4 +183,4 @@ async def top(ctx, scope=None):
         msg += f"{i}. {user.name}: {int(total):,} gp\n"
     await ctx.send(msg)
 
-bot.run(os.getenv("TOKEN"))
+bot.run(TOKEN)
