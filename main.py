@@ -51,8 +51,11 @@ def parse_price(price_str):
     else:
         return float(price_str)
 
+
 @bot.command()
-async def nib(ctx, item: str, price: str, *, extra="x1"):
+async def nib(ctx, *args):
+    await handle_buy(ctx, args)
+
     qty = int(extra.replace("x", "")) if "x" in extra else 1
     p = parse_price(price)
     c.execute("INSERT INTO flips (user_id, item, price, qty, type) VALUES (?, ?, ?, ?, ?)",
