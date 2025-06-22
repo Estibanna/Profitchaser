@@ -53,12 +53,11 @@ def parse_price(price_str):
 # Buy handler
 async def handle_buy(ctx, args):
     if len(args) < 2:
-        await ctx.send("Usage: `!nib <item name> <price> [x<qty>]`")
+        await ctx.send("Usage: `!nib <item> <price> [x<qty>]`")
         return
-
     try:
         qty = 1
-        if args[-1].lower().startswith("x"):
+        if args[-1].startswith("x"):
             qty = int(args[-1][1:])
             price_str = args[-2]
             item = " ".join(args[:-2])
@@ -67,15 +66,15 @@ async def handle_buy(ctx, args):
             item = " ".join(args[:-1])
 
         price = parse_price(price_str)
-        item = item.lower().strip()
+        item = item.lower()
 
         c.execute("INSERT INTO flips (user_id, item, price, qty, type) VALUES (?, ?, ?, ?, ?)",
                   (ctx.author.id, item, price, qty, "buy"))
         conn.commit()
-
     except Exception as e:
-        await ctx.send("❌ Invalid input. Use `!nib dragon pickaxe 22.5m x3`")
-        print(f"[ERROR] {e}")
+        await ctx.send("❌ Invalid input. Use `!nib <item> <price> [x<qty>]`")
+        print(e)
+
 # Sell handler
 async def handle_sell(ctx, args):
     if len(args) < 2:
@@ -127,32 +126,7 @@ async def handle_sell(ctx, args):
 # Commands
 @bot.command()
 async def nib(ctx, *args):
-    try:
-        if len(args) < 2:
-            await ctx.send("⚠️ Usage: !nib <item> <price> [xQuantity]")
-            return
-
-        # Detect quantity suffix
-        if "x" in args[-1].lower():
-            qty_part = args[-1]
-            price_part = args[-2]
-            item_part = args[:-2]
-        else:
-            qty_part = "x1"
-            price_part = args[-1]
-            item_part = args[:-1]
-
-        item = " ".join(item_part).lower()
-        price = parse_price(price_part)
-        qty = int(qty_part.lower().replace("x", ""))
-
-        c.execute("INSERT INTO flips (user_id, item, price, qty, type) VALUES (?, ?, ?, ?, ?)",
-                  (ctx.author.id, item, price, qty, "buy"))
-        conn.commit()
-        await ctx.send(f"📥 Added: {item} x{qty} at {int(price):,} gp")
-    except Exception as e:
-        await ctx.send(f"❌ Error: {e}")
-
+    await handle_buy(ctx, args)
 
 @bot.command()
 async def inb(ctx, *args):
