@@ -153,6 +153,19 @@ def get_flipper_rank(total_profit):
     else:
         return "Noob"
 
+
+
+
+
+
+
+
+
+
+
+
+
+
 # Commands
 
 @bot.event
@@ -202,6 +215,21 @@ async def rank(ctx):
     total = int(row[0]) if row and row[0] else 0
     rank = get_flipper_rank(total)
     await ctx.send(f"🏷️ Your current rank: **{rank}**\n💰 Total profit: {total:,} gp")
+
+@bot.command()
+async def ranks(ctx):
+    msg = "**📊 Flipper Ranks:**\n"
+    msg += "• 🪙 Flipping Titan – 1T+\n"
+    msg += "• God of GE – 500B+\n"
+    msg += "• Market Phantom – 100B+\n"
+    msg += "• Shark – 50B+\n"
+    msg += "• Capitalist – 5B+\n"
+    msg += "• Investor – 1B+\n"
+    msg += "• Tycoon – 500M+\n"
+    msg += "• Merchant – 100M+\n"
+    msg += "• Apprentice – 10M+\n"
+    msg += "• Noob – 0+"
+    await ctx.send(msg)
 
 @bot.command()
 async def top(ctx, scope=None):
