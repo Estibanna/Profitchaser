@@ -131,7 +131,27 @@ async def record_sell(ctx, args):
         await ctx.send("❌ Invalid input for sell. Use `!nis <item> <price> [x<qty>]`")
         print(e)
 
-
+def get_flipper_rank(total_profit):
+    if total_profit >= 1_000_000_000_000:
+        return "🪙 Flipping Titan"
+    elif total_profit >= 500_000_000_000:
+        return "God of GE"
+    elif total_profit >= 100_000_000_000:
+        return "Market Phantom"
+    elif total_profit >= 50_000_000_000:
+        return "Shark"
+    elif total_profit >= 5_000_000_000:
+        return "Capitalist"
+    elif total_profit >= 1_000_000_000:
+        return "Investor"
+    elif total_profit >= 500_000_000:
+        return "Tycoon"
+    elif total_profit >= 100_000_000:
+        return "Merchant"
+    elif total_profit >= 10_000_000:
+        return "Apprentice"
+    else:
+        return "Noob"
 
 # Commands
 
@@ -176,16 +196,12 @@ async def stock(ctx):
 
 
 @bot.command()
-async def rank(ctx, scope=None):
-    now = datetime.now(timezone.utc)
-    if scope == "all":
-        c.execute("SELECT SUM(profit) FROM profits WHERE user_id=?", (ctx.author.id,))
-    else:
-        c.execute("SELECT SUM(profit) FROM profits WHERE user_id=? AND month=?", (ctx.author.id, now.strftime("%Y-%m")))
+async def rank(ctx):
+    c.execute("SELECT SUM(profit) FROM profits WHERE user_id=?", (ctx.author.id,))
     row = c.fetchone()
     total = int(row[0]) if row and row[0] else 0
-    label = "this month" if scope != "all" else "this year"
-    await ctx.send(f"📈 Your total profit {label}: {total:,} gp")
+    rank = get_flipper_rank(total)
+    await ctx.send(f"🏷️ Your current rank: **{rank}**\n💰 Total profit: {total:,} gp")
 
 @bot.command()
 async def top(ctx, scope=None):
