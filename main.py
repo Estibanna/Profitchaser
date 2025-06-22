@@ -203,7 +203,11 @@ async def top(ctx, scope=None):
         msg += f"{i}. {user.name}: {int(total):,} gp\n"
     await ctx.send(msg)
 
-
+@bot.command()
+async def removewin(ctx):
+    c.execute("DELETE FROM profits WHERE user_id=?", (ctx.author.id,))
+    conn.commit()
+    await ctx.send("💸 All your recorded profits have been removed.")
 
 @bot.command()
 async def reset(ctx, scope=None):
