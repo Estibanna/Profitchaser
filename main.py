@@ -167,14 +167,18 @@ async def top(ctx, scope=None):
     now = datetime.now(timezone.utc)
     if scope == "all":
         c.execute("SELECT user_id, SUM(profit) FROM profits GROUP BY user_id ORDER BY SUM(profit) DESC LIMIT 10")
+        title = "**🏆 Top flippers of all time:**\n"
     else:
         c.execute("SELECT user_id, SUM(profit) FROM profits WHERE month=? GROUP BY user_id ORDER BY SUM(profit) DESC LIMIT 10",
                   (now.strftime("%Y-%m"),))
+        title = "**📆 Top flippers this month:**\n"
+
     rows = c.fetchall()
     if not rows:
         await ctx.send("No leaderboard data.")
         return
-    msg = "**🏆 Top flippers:**\n"
+
+    msg = title
     for i, (uid, total) in enumerate(rows, 1):
         user = await bot.fetch_user(uid)
         msg += f"{i}. {user.name}: {int(total):,} gp\n"
