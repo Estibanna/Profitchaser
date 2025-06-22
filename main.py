@@ -161,13 +161,21 @@ async def ins(ctx, *args):
 async def stock(ctx):
     c.execute("SELECT item, SUM(qty) FROM flips WHERE user_id=? AND type='buy' GROUP BY item", (ctx.author.id,))
     rows = c.fetchall()
+
     if not rows:
-        await ctx.send("📦 You have no inventory.")
+        await ctx.author.send("📦 You have no inventory.")
         return
+
     msg = "**📦 Your inventory:**\n"
     for item, qty in rows:
         msg += f"• {item} x{qty}\n"
-    await ctx.send(msg)
+
+    try:
+        await ctx.author.send(msg)
+        await ctx.send("📬 I’ve sent your inventory in DM.")
+    except discord.Forbidden:
+        await ctx.send("❌ I can't DM you. Please enable DMs from server members.")
+
 
 @bot.command()
 async def rank(ctx, scope=None):
