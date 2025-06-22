@@ -2,7 +2,7 @@ import discord
 from discord.ext import commands
 import sqlite3
 import os
-from datetime import datetime, timezone
+from datetime import datetime, timezone, timedelta
 
 
 # Setup
