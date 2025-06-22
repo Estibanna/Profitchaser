@@ -3,9 +3,15 @@ from discord.ext import commands
 import sqlite3
 import os
 from datetime import datetime, timezone
+from keepalive import keepalive
+import time
+keepalive()
 
 
-
+while True:
+    os.system("python3 main.py")
+    print("Bot crashed. Restarting in 5 seconds...")
+    time.sleep(5)
 
 # Setup
 TOKEN = os.getenv("TOKEN")
