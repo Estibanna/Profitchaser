@@ -40,12 +40,12 @@ CREATE TABLE IF NOT EXISTS profits (
 # Database setup (plaats dit na je andere CREATE TABLES)
 try:
     c.execute("ALTER TABLE profits ADD COLUMN item TEXT")
-conn.commit()
+
 except sqlite3.OperationalError:
     pass  # Kolom bestaat al, geen probleem
 
 
-
+conn.commit()
 
 
 
