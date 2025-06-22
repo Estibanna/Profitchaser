@@ -92,10 +92,13 @@ async def handle_sell(ctx, item, price, extra):
         else:
             c.execute("UPDATE flips SET qty=? WHERE rowid=?", (new_qty, rowid))
         remaining -= used_qty
-    if qty - remaining > 0:
+   if qty - remaining > 0:
         now = datetime.now(timezone.utc)
         c.execute("INSERT INTO profits (user_id, profit, timestamp, month, year) VALUES (?, ?, ?, ?, ?)",
-                  (ctx.author.id, profit, now.isoformat(), now.strftime("%Y-%m"), now.strftime("%Y")))
+              (ctx.author.id, profit, now.isoformat(), now.strftime("%Y-%m"), now.strftime("%Y")))
+        await ctx.send(f"💰 Sold {qty - remaining} x {item} for a profit of {int(profit):,} gp.")
+    else:
+        await ctx.send("⚠️ Not enough items in stock to match this sale.")
     conn.commit()
 
 @bot.command()
