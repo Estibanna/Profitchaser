@@ -103,7 +103,7 @@ async def record_sell(ctx, args):
             c.execute("INSERT INTO profits (user_id, profit, timestamp, month, year) VALUES (?, ?, ?, ?, ?)",
                       (ctx.author.id, profit, now.isoformat(), now.strftime("%Y-%m"), now.strftime("%Y")))
             conn.commit()
-            await ctx.send(f"💰 Sold {qty - remaining} x {item} for a profit of {int(profit):,} gp.")
+            #await ctx.send(f"💰 Sold {qty - remaining} x {item} for a profit of {int(profit):,} gp.")
         else:
             await ctx.send("⚠️ Not enough stock to sell.")
     except Exception as e:
