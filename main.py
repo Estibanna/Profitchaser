@@ -121,7 +121,6 @@ async def record_sell(ctx, args):
 @bot.event
 async def on_ready():
     print(f"✅ Logged in as {bot.user}")
-    bot.loop.create_task(auto_upload_loop())
 
 @bot.command()
 async def nib(ctx, *args):
