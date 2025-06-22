@@ -556,4 +556,80 @@ async def mywatchlist(ctx):
         msg += f"• {item} ≤ {int(price):,} gp\n"
     await ctx.send(msg)
 
+
+@bot.command()
+async def help(ctx):
+    embed = discord.Embed(
+        title="📘 EDF FlipBot Help",
+        description="Here’s a full list of commands you can use:",
+        color=discord.Color.blue()
+    )
+
+    embed.add_field(name="📥 Buy Commands", value=(
+        "`!nib item price`\n"
+        "`!inb item price x2`\n"
+        "➤ Add items to your inventory"
+    ), inline=False)
+
+    embed.add_field(name="💸 Sell Commands", value=(
+        "`!nis item price`\n"
+        "`!ins item price x2`\n"
+        "➤ Sell items and calculate profit (GE tax)"
+    ), inline=False)
+
+    embed.add_field(name="📦 Inventory", value=(
+        "`!stock` – Show your current inventory\n"
+        "`!payed item` – Show what you paid for an item"
+    ), inline=False)
+
+    embed.add_field(name="🗑️ Delete & Reset", value=(
+        "`!reset` – Undo your last entry\n"
+        "`!reset all` – Delete all flips & profits\n"
+        "`!delete item x2` – Remove items manually\n"
+        "`!removewin` – Remove all your tracked profit"
+    ), inline=False)
+
+    embed.add_field(name="📈 Profit Tracking", value=(
+        "`!day` – Today's profit\n"
+        "`!month` – This month's profit\n"
+        "`!year` – This year's profit"
+    ), inline=False)
+
+    embed.add_field(name="🏆 Leaderboard", value=(
+        "`!top` – Top 10 this month\n"
+        "`!top all` – Top 10 all time\n"
+        "`!rank` – Your profit this month\n"
+        "`!rank all` – Your all-time profit"
+    ), inline=False)
+
+    embed.add_field(name="🪙 Extra Stats", value=(
+        "`!flips` – Total flips\n"
+        "`!avgprofit` – Average profit per flip\n"
+        "`!bestitem` – Most profitable item\n"
+        "`!losses` – All loss flips"
+    ), inline=False)
+
+    embed.add_field(name="🎖️ Ranks", value=(
+        "`!myrank` – Show your rank\n"
+        "`!ranks` – See all rank tiers"
+    ), inline=False)
+
+    embed.add_field(name="⚔️ Flip Duel", value=(
+        "`!duel @user` – Start a 3-day profit duel\n"
+        "`!duelscore` – Check your current duel scores"
+    ), inline=False)
+
+    embed.add_field(name="🔔 Price Alerts", value=(
+        "`!watch item price` – Alert if item drops below target"
+    ), inline=False)
+
+    embed.set_footer(text="Happy flipping! 🧠")
+
+    try:
+        await ctx.author.send(embed=embed)
+        await ctx.message.add_reaction("📬")
+    except discord.Forbidden:
+        await ctx.send("❌ I can't DM you. Please enable DMs from server members.")
+
+
 bot.run(TOKEN)
