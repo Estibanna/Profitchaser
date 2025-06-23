@@ -103,7 +103,8 @@ async def record_buy(ctx, args):
     except Exception as e:
         await ctx.send("❌ Invalid input for buy. Use `!nib <item> <price> [x<qty>]`")
         print(e)
-
+        print("✅ Inserted flip into database.")
+        print("📂 Current DB path:", os.path.abspath("data/flips.db"))
 
 
 # Sell handler
