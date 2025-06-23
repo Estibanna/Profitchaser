@@ -3,7 +3,14 @@ from discord.ext import commands
 import sqlite3
 import os
 from datetime import datetime, timezone, timedelta
+import shutil
+import os
 
+# Eenmalig je flips.db uploaden naar het volume
+if os.path.exists("flips.db") and not os.path.exists("/app/data/flips.db"):
+    os.makedirs("/app/data", exist_ok=True)
+    shutil.copyfile("flips.db", "/app/data/flips.db")
+    print("✅ flips.db succesvol gekopieerd naar Railway volume.")
 # Setup
 TOKEN = os.getenv("TOKEN")
 intents = discord.Intents.default()
