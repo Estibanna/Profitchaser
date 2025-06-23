@@ -7,9 +7,9 @@ import shutil
 import os
 
 # Eenmalig je flips.db uploaden naar het volume
-if os.path.exists("flips.db") and not os.path.exists("/app/data/flips.db"):
-    os.makedirs("/app/data", exist_ok=True)
-    shutil.copyfile("flips.db", "/app/data/flips.db")
+if os.path.exists("flips.db") and not os.path.exists("data/flips.db"):
+    os.makedirs("data", exist_ok=True)
+    shutil.copyfile("flips.db", "data/flips.db")
     print("✅ flips.db succesvol gekopieerd naar Railway volume.")
 # Setup
 TOKEN = os.getenv("TOKEN")
