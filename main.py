@@ -3,7 +3,15 @@ from discord.ext import commands
 import sqlite3
 import os
 from datetime import datetime, timezone, timedelta
+import shutil
+import os
 
+# ONLY RUN THIS ONCE to copy local flips.db into the volume
+if os.path.exists("flips.db") and not os.path.exists("data/flips.db"):
+    os.makedirs("data", exist_ok=True)
+    shutil.copyfile("flips.db", "data/flips.db")
+    print("✅ Copied flips.db to Railway volume.")
+    
 
 # Setup
 TOKEN = os.getenv("TOKEN")
