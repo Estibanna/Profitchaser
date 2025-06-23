@@ -630,6 +630,22 @@ async def help(ctx):
         await ctx.message.add_reaction("📬")
     except discord.Forbidden:
         await ctx.send("❌ I can't DM you. Please enable DMs from server members.")
-
+@bot.command()
+async def bestitem(ctx):
+    c.execute("""
+        SELECT item, SUM(profit) as total_profit
+        FROM profits
+        WHERE user_id = ?
+        GROUP BY item
+        ORDER BY total_profit DESC
+        LIMIT 1
+    """, (ctx.author.id,))
+    
+    result = c.fetchone()
+    if result:
+        item, total = result
+        await ctx.send(f"🏆 Your best item is **{item}** with **{int(total):,} gp** profit.")
+    else:
+        await ctx.send("❌ You have no flip data yet.")
 
 bot.run(TOKEN)
