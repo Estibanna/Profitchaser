@@ -13,7 +13,9 @@ bot.remove_command('help')
 active_duels = {}  # Dict met (user1_id, user2_id): start_time
 # Ensure data folder exists
 os.makedirs("data", exist_ok=True)
-conn = sqlite3.connect("data/flips.db")
+volume_path = "/app/data/flips.db" if os.getenv("RAILWAY_ENVIRONMENT") else "data/flips.db"
+conn = sqlite3.connect(volume_path)
+
 print("[DEBUG] Using database:", os.path.abspath("data/flips.db"))
 c = conn.cursor()
 
