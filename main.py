@@ -250,12 +250,18 @@ async def stock(ctx):
 
 
 @bot.command()
-async def rank(ctx):
-    c.execute("SELECT SUM(profit) FROM profits WHERE user_id=?", (ctx.author.id,))
+async def rank(ctx, scope=None):
+    if scope == "all":
+        c.execute("SELECT SUM(profit) FROM profits WHERE user_id=?", (ctx.author.id,))
+    else:
+        current_month = datetime.now(timezone.utc).strftime("%Y-%m")
+        c.execute("SELECT SUM(profit) FROM profits WHERE user_id=? AND month=?", (ctx.author.id, current_month))
+
     row = c.fetchone()
     total = int(row[0]) if row and row[0] else 0
     rank = get_flipper_rank(total)
-    await ctx.send(f"🏷️ Your current rank: **{rank}**\n💰 Total profit: {total:,} gp")
+    label = "all-time" if scope == "all" else "this month"
+    await ctx.send(f"🏷️ Your current rank ({label}): **{rank}**\n💰 Profit: {total:,} gp")
 
 @bot.command()
 async def ranks(ctx):
