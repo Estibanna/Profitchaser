@@ -4,12 +4,9 @@ import sqlite3
 import os
 
 from datetime import datetime, timezone, timedelta
-OWNER_ROLE_ID = 1335385385387163698
-MOD_ROLE_ID = 1334261170433163385
-
 def is_mod_or_owner(member):
-    role_ids = [role.id for role in member.roles]
-    return OWNER_ROLE_ID in role_ids or MOD_ROLE_ID in role_ids
+    role_names = [role.name.lower() for role in member.roles]
+    return "mods" in role_names or "owners" in role_names
 
 # Stup
 TOKEN = os.getenv("TOKEN")
@@ -322,7 +319,6 @@ async def top(ctx, scope=None):
         msg += f"{i}. {user.name}: {int(total):,} gp\n"
     await ctx.send(msg)
 
-
 @bot.command()
 async def topmod(ctx, scope=None):
     if isinstance(ctx.channel, discord.DMChannel):
@@ -339,28 +335,15 @@ async def topmod(ctx, scope=None):
         title = "**👑 Top Mod Flippers this month:**\n"
 
     rows = c.fetchall()
-    if not rows:
-        await ctx.send("No leaderboard data.")
-        return
-
     msg = title
     count = 0
+
     for uid, total in rows:
         member = ctx.guild.get_member(uid)
-        print(f"[DEBUG] Checking user_id: {uid}")
-        if member:
-            print(f" - Member found: {member.name}")
-            print(" - Roles:")
-            for role in member.roles:
-                print(f"   * {role.name} ({role.id})")
-        else:
-            print(" - Member not found in this guild")
-    
         if member and is_mod_or_owner(member):
             user = await bot.fetch_user(uid)
             count += 1
             msg += f"{count}. {user.name}: {int(total):,} gp\n"
-    
         if count == 10:
             break
 
