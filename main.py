@@ -255,6 +255,23 @@ async def ins(ctx, *args):
         return
     await record_sell(ctx, args)
 
+
+
+
+
+# Helper om af te ronden naar m/k/gp
+def format_price(value):
+    if value >= 1_000_000:
+        return f"{value / 1_000_000:.2f}".rstrip("0").rstrip(".") + "m"
+    elif value >= 1_000:
+        return f"{value / 1_000:.2f}".rstrip("0").rstrip(".") + "k"
+    else:
+        return f"{int(value)}gp"    
+
+
+
+
+
 @bot.command()
 async def stock(ctx):
     c.execute("SELECT item, SUM(qty) FROM flips WHERE user_id=? AND type='buy' GROUP BY item", (ctx.author.id,))
@@ -741,63 +758,23 @@ async def rolls(ctx):
     rollen = [f"{role.name} ({role.id})" for role in member.roles]
     await ctx.send("🧾 Jouw rollen:\n" + "\n".join(rollen))
 
+
 @bot.command()
 async def fliptoday(ctx):
     today = datetime.now(timezone.utc).date().isoformat()
-
     c.execute("""
-        SELECT item, price, qty, type, timestamp
-        FROM flips
+        SELECT item, profit, timestamp
+        FROM profits
         WHERE user_id = ? AND DATE(timestamp) = ?
         ORDER BY timestamp
     """, (ctx.author.id, today))
     rows = c.fetchall()
 
     if not rows:
-        await ctx.send("📭 You haven't flipped anything today.")
-        return
-
-    # Verzamel buys/sells
-    buys = {}
-    sells = {}
-
-    for item, price, qty, flip_type, timestamp in rows:
-        key = item.lower()
-        if flip_type == "buy":
-            if key not in buys:
-                buys[key] = []
-            buys[key].append((price, qty, timestamp))
-        elif flip_type == "sell":
-            if key not in sells:
-                sells[key] = []
-            sells[key].append((price, qty, timestamp))
-
-
-    flipped_items = []
-    for item in set(buys.keys()) & set(sells.keys()):
-        lowest_buy = min([b[0] for b in buys[item]])
-        highest_sell = max([s[0] for s in sells[item]])
-        profit = highest_sell - lowest_buy
-        flipped_items.append((item, lowest_buy, highest_sell, profit))
-
-    if not flipped_items:
         await ctx.send("📭 You haven't completed any flips today (buy + sell).")
         return
 
-
-
-    
-
-    # Helper om af te ronden naar m/k/gp
-    def format_price(value):
-        if value >= 1_000_000:
-            return f"{value / 1_000_000:.2f}".rstrip("0").rstrip(".") + "m"
-        elif value >= 1_000:
-            return f"{value / 1_000:.2f}".rstrip("0").rstrip(".") + "k"
-        else:
-            return f"{int(value)}gp"
-
-    
+    # Helper om winst/verlies mooi te formatteren
     def format_profit(value):
         sign = "+" if value >= 0 else "-"
         value = abs(value)
@@ -807,20 +784,21 @@ async def fliptoday(ctx):
             return f"{sign}{value / 1_000:.2f}".rstrip("0").rstrip(".") + "k"
         else:
             return f"{sign}{int(value)}gp"
-    
 
-
-    
     msg = "**📊 Flips completed today:**\n"
-    for item, buy, sell, profit in flipped_items:
-        msg += f"{item.title()}: {format_price(buy)} - {format_price(sell)}"
-        msg += f" (**{format_profit(profit)}**)\n"
+    total_profit = 0
+    for item, profit, _ in rows:
+        total_profit += profit
+        msg += f"{item.title()}: **{format_profit(profit)}**\n"
+
+    msg += f"\n**Total profit today: {format_profit(total_profit)}**"
 
     try:
         await ctx.author.send(msg)
         await ctx.send("📬 I’ve sent your flips in DM.")
     except discord.Forbidden:
         await ctx.send("❌ I can't DM you. Please enable DMs from server members.")
+
 
     
 bot.run(TOKEN)
