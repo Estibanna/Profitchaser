@@ -4,7 +4,8 @@ import sqlite3
 import os
 
 from datetime import datetime, timezone, timedelta
-
+async def is_mod_or_owner(member):
+    return member.guild_permissions.manage_guild or member.guild_permissions.administrator
 
 # Stup
 TOKEN = os.getenv("TOKEN")
