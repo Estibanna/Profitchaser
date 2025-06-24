@@ -705,4 +705,14 @@ async def bestitem(ctx):
     else:
         await ctx.send("❌ You have no flip data yet.")
 
+@bot.command()
+async def rolls(ctx):
+    member = ctx.guild.get_member(ctx.author.id)
+    if not member:
+        await ctx.send("❌ Bot kon je member-info niet ophalen (get_member is None).")
+        return
+
+    rollen = [f"{role.name} ({role.id})" for role in member.roles]
+    await ctx.send("🧾 Jouw rollen:\n" + "\n".join(rollen))
+
 bot.run(TOKEN)
