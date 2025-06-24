@@ -758,11 +758,11 @@ async def fliptoday(ctx):
 
     for item, price, qty, flip_type, timestamp in rows:
         key = item.lower()
-        if flip_type in ["buy", "inb", "nib"]:
+        if flip_type == "buy":
             if key not in buys:
                 buys[key] = []
             buys[key].append((price, qty, timestamp))
-        elif flip_type in ["sell", "ins", "nis"]:
+        elif flip_type == "sell":
             if key not in sells:
                 sells[key] = []
             sells[key].append((price, qty, timestamp))
