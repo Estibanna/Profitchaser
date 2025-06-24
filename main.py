@@ -300,25 +300,33 @@ async def ranks(ctx):
 
 @bot.command()
 async def top(ctx, scope=None):
-    now = datetime.now(timezone.utc)
-    if scope == "all":
-        c.execute("SELECT user_id, SUM(profit) FROM profits GROUP BY user_id ORDER BY SUM(profit) DESC LIMIT 10")
-        title = "**🏆 Top flippers of all time:**\n"
-    else:
-        c.execute("SELECT user_id, SUM(profit) FROM profits WHERE month=? GROUP BY user_id ORDER BY SUM(profit) DESC LIMIT 10",
-                  (now.strftime("%Y-%m"),))
-        title = "**🏆 Top flippers this month:**\n"
-
-    rows = c.fetchall()
-    if not rows:
-        await ctx.send("No leaderboard data.")
+    if isinstance(ctx.channel, discord.DMChannel):
+        await ctx.send("❌ This command can only be used in a server.")
         return
 
+    now = datetime.now(timezone.utc)
+    if scope == "all":
+        c.execute("SELECT user_id, SUM(profit) FROM profits GROUP BY user_id ORDER BY SUM(profit) DESC")
+        title = "**🏆 Top flippers of all time (non-mods):**\n"
+    else:
+        c.execute("SELECT user_id, SUM(profit) FROM profits WHERE month=? GROUP BY user_id ORDER BY SUM(profit) DESC",
+                  (now.strftime("%Y-%m"),))
+        title = "**🏆 Top flippers this month (non-mods):**\n"
+
+    rows = c.fetchall()
     msg = title
-    for i, (uid, total) in enumerate(rows, 1):
-        user = await bot.fetch_user(uid)
-        msg += f"{i}. {user.name}: {int(total):,} gp\n"
-    await ctx.send(msg)
+    count = 0
+
+    for uid, total in rows:
+        member = ctx.guild.get_member(uid)
+        if member and not is_mod_or_owner(member):
+            user = await bot.fetch_user(uid)
+            count += 1
+            msg += f"{count}. {user.name}: {int(total):,} gp\n"
+        if count == 10:
+            break
+
+    await ctx.send(msg if count > 0 else "⚠️ No non-mod flippers found.")
 
 @bot.command()
 async def topmod(ctx, scope=None):
