@@ -145,18 +145,19 @@ async def record_sell(ctx, args):
             # Voeg de sell toe aan flips zodat !reset werkt
             c.execute("INSERT INTO flips (user_id, item, price, qty, type) VALUES (?, ?, ?, ?, 'sell')",
                       (ctx.author.id, item, price, qty))
-                    # Notificeer watchers
-            c.execute("SELECT user_id FROM watchlist WHERE item=? AND max_price >= ?", (item, price))
+            # Notificeer watchers uit de database
+            c.execute("SELECT user_id, max_price FROM watchlist WHERE item=?", (item,))
             watchers = c.fetchall()
-            for watcher_id in watchers:
-                user = await bot.fetch_user(watcher_id[0])
-                try:
-                    await user.send(f"🔔 `{item}` has been sold for {int(price):,} gp or less!")
-                    # Verwijder de watchlist-entry na melding
-                    c.execute("DELETE FROM watchlist WHERE user_id=? AND item=? AND max_price=?", (watcher_id[0], item, price))
-                except:
-                    pass  # gebruiker staat DM's niet toe
-    
+            for watcher_id, max_price in watchers:
+                if price <= max_price:
+                    user = await bot.fetch_user(watcher_id)
+                    try:
+                        await user.send(f"🔔 `{item}` has been sold for {int(price):,} gp or less!")
+                        # Verwijder de watchlist-entry na melding
+                        c.execute("DELETE FROM watchlist WHERE user_id=? AND item=?", (watcher_id, item))
+                    except:
+                        pass  # gebruiker staat DMs niet toe
+                
              
            
             
