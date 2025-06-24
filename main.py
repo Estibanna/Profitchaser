@@ -103,26 +103,37 @@ def parse_item_args(args):
 
 # Buy handler
 
+@bot.command(name="inb", aliases=["nib"])
 async def record_buy(ctx, args):
     try:
         item, price, qty = parse_item_args(args)
         item = item.lower()
+
+        command = ctx.invoked_with.lower()
+        flip_type = 'buy' if command in ['inb', 'nib'] else command
+
         c.execute("INSERT INTO flips (user_id, item, price, qty, type) VALUES (?, ?, ?, ?, ?)",
-                  (ctx.author.id, item, price, qty, "buy"))
+                  (ctx.author.id, item, price, qty, flip_type))
         conn.commit()
-    except Exception as e:
-        await ctx.send("❌ Invalid input for buy. Use `!nib <item> <price> [x<qty>]`")
-        print(e)
+
         print("✅ Inserted flip into database.")
-        print("📂 Current DB path:", os.path.abspath("data/flips.db"))
+        print("📁 Current DB path:", os.path.abspath("data/flips.db"))
+
+    except Exception as e:
+        await ctx.send("❌ Invalid input for buy. Use: `!inb <item> <price> [xqty]`")
+        print(e)
+
 
 
 # Sell handler
-@bot.command()
+@bot.command(name="ins", aliases=["nis"])
 async def record_sell(ctx, args):
     try:
         item, price, qty = parse_item_args(args)
         item = item.lower()
+        command = ctx.invoked_with.lower()
+        flip_type = 'sell' if command in ['ins', 'nis'] else command
+
         sell_price = price * 0.98
 
         # Zoek alle aankopen van dit item in volgorde
@@ -158,19 +169,14 @@ async def record_sell(ctx, args):
             now = datetime.now(timezone.utc)
             avg_buy_price = round(total_cost / total_used_qty, 2) if total_used_qty > 0 else 0
 
-
-
             print(f"[DEBUG] Profit for {item}: profit={profit}, avg_buy_price={avg_buy_price}, sell_price={price}")
             if avg_buy_price == 0:
                 print("[WAARSCHUWING] Gemiddelde aankoopprijs is 0 — controleer of er stock was.")
-            
+
             # (optioneel tijdelijke fallback om te voorkomen dat N/A verschijnt)
             if avg_buy_price == 0:
-                avg_buy_price = price * 0.5  # tijdelijke oplossing om lege N/A te vermijden
+                avg_buy_price = price * 0.5
 
-
-
-    
             c.execute("""
                 INSERT INTO profits (user_id, profit, timestamp, month, year, item, buy_price, sell_price)
                 VALUES (?, ?, ?, ?, ?, ?, ?, ?)
@@ -184,11 +190,12 @@ async def record_sell(ctx, args):
                 avg_buy_price,
                 price
             ))
+
         # Voeg verkoop toe aan flips (voor !reset)
         c.execute("""
             INSERT INTO flips (user_id, item, price, qty, type)
-            VALUES (?, ?, ?, ?, 'sell')
-        """, (ctx.author.id, item, price, qty))
+            VALUES (?, ?, ?, ?, ?)
+        """, (ctx.author.id, item, price, qty, flip_type))
 
         # Waarschuw watchers
         c.execute("SELECT user_id, max_price FROM watchlist WHERE item=?", (item,))
@@ -196,8 +203,17 @@ async def record_sell(ctx, args):
         for watcher_id, max_price in watchers:
             if price <= max_price:
                 user = await bot.fetch_user(watcher_id)
+                try:
+                    await user.send(f"⚠️ `{item}` has been sold for {int(price):,} gp or less!")
+                    c.execute("DELETE FROM watchlist WHERE user_id=? AND item=?", (watcher_id, item))
+                except:
+                    pass  # gebruiker staat DMs niet toe
 
-            conn.commit()
+        conn.commit()
+    except Exception as e:
+        await ctx.send("❌ Fout bij het verwerken van de verkoop.")
+        print("[SELL ERROR]", e)
+
 
             # Check of iemand deze item trackt (watchlist-alert)
             for user_id, items in user_track_requests.items():
