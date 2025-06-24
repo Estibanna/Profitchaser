@@ -13,6 +13,8 @@ TOKEN = os.getenv("TOKEN")
 intents = discord.Intents.default()
 intents.message_content = True
 bot = commands.Bot(command_prefix="!", intents=intents)
+intents.members = True
+
 bot.remove_command('help')
 active_duels = {}  # Dict met (user1_id, user2_id): start_time
 # Ensure data folder exists
