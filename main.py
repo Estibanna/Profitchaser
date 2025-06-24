@@ -736,4 +736,32 @@ async def rolls(ctx):
     rollen = [f"{role.name} ({role.id})" for role in member.roles]
     await ctx.send("🧾 Jouw rollen:\n" + "\n".join(rollen))
 
+@bot.command()
+async def fliptoday(ctx):
+    today = datetime.now(timezone.utc).date().isoformat()
+
+    c.execute("""
+        SELECT item, price, qty, type, timestamp
+        FROM flips
+        WHERE user_id = ? AND DATE(timestamp) = ?
+        ORDER BY timestamp
+    """, (ctx.author.id, today))
+
+    rows = c.fetchall()
+
+    if not rows:
+        await ctx.send("📭 You haven't flipped anything today.")
+        return
+
+    msg = f"**📅 Your flips today ({today}):**\n"
+    for item, price, qty, flip_type, timestamp in rows:
+        emoji = "📥" if flip_type == "buy" else "💸"
+        time_str = timestamp[11:16]  # enkel HH:MM uit ISO-timestamp
+        msg += f"{emoji} `{item}` x{qty} @ {int(price):,} gp — {flip_type.upper()} at {time_str}\n"
+
+    try:
+        await ctx.author.send(msg)
+        await ctx.send("📬 I’ve sent your flips in DM.")
+    except discord.Forbidden:
+        await ctx.send("❌ I can't DM you. Please enable DMs from server members.")
 bot.run(TOKEN)
