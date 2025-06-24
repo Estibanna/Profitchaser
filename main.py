@@ -272,33 +272,7 @@ def get_flipper_rank(total_profit):
 async def on_ready():
     print(f"✅ Logged in as {bot.user}")
 
-@bot.command()
-async def nib(ctx, *args):
-    if isinstance(ctx.channel, discord.DMChannel):
-        await ctx.send("❌ This command can only be used in a server.")
-        return
-    await record_buy(ctx, args)
 
-@bot.command()
-async def inb(ctx, *args):
-    if isinstance(ctx.channel, discord.DMChannel):
-        await ctx.send("❌ This command can only be used in a server.")
-        return
-    await record_buy(ctx, args)
-
-@bot.command()
-async def nis(ctx, *args):
-    if isinstance(ctx.channel, discord.DMChannel):
-        await ctx.send("❌ This command can only be used in a server.")
-        return
-    await record_sell(ctx, args)
-
-@bot.command()
-async def ins(ctx, *args):
-    if isinstance(ctx.channel, discord.DMChannel):
-        await ctx.send("❌ This command can only be used in a server.")
-        return
-    await record_sell(ctx, args)
 
 @bot.command()
 async def stock(ctx):
