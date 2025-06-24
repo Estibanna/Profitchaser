@@ -325,6 +325,10 @@ async def top(ctx, scope=None):
 
 @bot.command()
 async def topmod(ctx, scope=None):
+    if isinstance(ctx.channel, discord.DMChannel):
+        await ctx.send("❌ This command can only be used in a server.")
+        return
+
     now = datetime.now(timezone.utc)
     if scope == "all":
         c.execute("SELECT user_id, SUM(profit) FROM profits GROUP BY user_id ORDER BY SUM(profit) DESC")
@@ -344,13 +348,14 @@ async def topmod(ctx, scope=None):
     for uid, total in rows:
         member = ctx.guild.get_member(uid)
         if member and is_mod_or_owner(member):
-            count += 1
             user = await bot.fetch_user(uid)
+            count += 1
             msg += f"{count}. {user.name}: {int(total):,} gp\n"
         if count == 10:
             break
 
     await ctx.send(msg if count > 0 else "⚠️ No mod/owner flips found.")
+
 
 @bot.command()
 async def removewin(ctx):
