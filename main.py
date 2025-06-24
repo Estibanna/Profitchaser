@@ -181,7 +181,7 @@ async def record_sell(ctx, args):
         watchers = c.fetchall()
         for watcher_id, max_price in watchers:
             if price <= max_price:
-                user = await bot.fetch_user(_
+                user = await bot.fetch_user(watcher_id)
 
              
            
