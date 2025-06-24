@@ -222,7 +222,7 @@ async def record_sell(ctx, args):
                         await user.send(f"📉 `{item}` just hit `{price}` (below your `{limit_price}` alert)")
                         break  # Stuur max 1 bericht per user
 
-    else:
+        else:
             await ctx.send("⚠️ Not enough stock to sell.")
 
     except Exception as e:
