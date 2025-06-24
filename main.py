@@ -779,6 +779,10 @@ async def fliptoday(ctx):
         await ctx.send("📭 You haven't completed any flips today (buy + sell).")
         return
 
+
+
+    
+
     # Helper om af te ronden naar m/k/gp
     def format_price(value):
         if value >= 1_000_000:
@@ -788,10 +792,24 @@ async def fliptoday(ctx):
         else:
             return f"{int(value)}gp"
 
+    
+    def format_profit(value):
+    sign = "+" if value >= 0 else "-"
+    value = abs(value)
+    if value >= 1_000_000:
+        return f"{sign}{value / 1_000_000:.2f}".rstrip("0").rstrip(".") + "m"
+    elif value >= 1_000:
+        return f"{sign}{value / 1_000:.2f}".rstrip("0").rstrip(".") + "k"
+    else:
+        return f"{sign}{int(value)}gp"
+
+
+
+    
     msg = "**📊 Flips completed today:**\n"
     for item, buy, sell, profit in flipped_items:
         msg += f"{item.title()}: {format_price(buy)} - {format_price(sell)}"
-        msg += f" (**+{format_price(profit)}**)\n"
+        msg += f" (**{format_profit(profit)}**)\n"
 
     try:
         await ctx.author.send(msg)
@@ -799,5 +817,5 @@ async def fliptoday(ctx):
     except discord.Forbidden:
         await ctx.send("❌ I can't DM you. Please enable DMs from server members.")
 
-
+    
 bot.run(TOKEN)
