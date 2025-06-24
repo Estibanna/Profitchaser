@@ -106,6 +106,7 @@ def parse_item_args(args):
 async def record_buy(ctx, args):
     try:
         item, price, qty = parse_item_args(args)
+        item = item.lower()
         c.execute("INSERT INTO flips (user_id, item, price, qty, type) VALUES (?, ?, ?, ?, ?)",
                   (ctx.author.id, item, price, qty, "buy"))
         conn.commit()
@@ -121,6 +122,7 @@ async def record_buy(ctx, args):
 async def record_sell(ctx, args):
     try:
         item, price, qty = parse_item_args(args)
+        item = item.lower()
         sell_price = price * 0.98
 
         # Zoek alle aankopen van dit item in volgorde
