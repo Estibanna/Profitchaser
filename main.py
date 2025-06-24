@@ -326,7 +326,7 @@ async def top(ctx, scope=None):
         if count == 10:
             break
 
-    await ctx.send(msg if count > 0 else "⚠️ No non-mod flippers found.")
+    await ctx.send(msg if count > 0 else "⚠️ No flips found.")
 
 @bot.command()
 async def topmod(ctx, scope=None):
