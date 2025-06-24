@@ -746,22 +746,57 @@ async def fliptoday(ctx):
         WHERE user_id = ? AND DATE(timestamp) = ?
         ORDER BY timestamp
     """, (ctx.author.id, today))
-
     rows = c.fetchall()
 
     if not rows:
         await ctx.send("📭 You haven't flipped anything today.")
         return
 
-    msg = f"**📅 Your flips today ({today}):**\n"
+    # Verzamel buys/sells
+    buys = {}
+    sells = {}
+
     for item, price, qty, flip_type, timestamp in rows:
-        emoji = "📥" if flip_type == "buy" else "💸"
-        time_str = timestamp[11:16]  # enkel HH:MM uit ISO-timestamp
-        msg += f"{emoji} `{item}` x{qty} @ {int(price):,} gp — {flip_type.upper()} at {time_str}\n"
+        key = item.lower()
+        if flip_type == "buy":
+            if key not in buys:
+                buys[key] = []
+            buys[key].append((price, qty, timestamp))
+        elif flip_type == "sell":
+            if key not in sells:
+                sells[key] = []
+            sells[key].append((price, qty, timestamp))
+
+    flipped_items = []
+    for item in set(buys.keys()) & set(sells.keys()):
+        lowest_buy = min([b[0] for b in buys[item]])
+        highest_sell = max([s[0] for s in sells[item]])
+        profit = highest_sell - lowest_buy
+        flipped_items.append((item, lowest_buy, highest_sell, profit))
+
+    if not flipped_items:
+        await ctx.send("📭 You haven't completed any flips today (buy + sell).")
+        return
+
+    # Helper om af te ronden naar m/k/gp
+    def format_price(value):
+        if value >= 1_000_000:
+            return f"{value / 1_000_000:.2f}".rstrip("0").rstrip(".") + "m"
+        elif value >= 1_000:
+            return f"{value / 1_000:.2f}".rstrip("0").rstrip(".") + "k"
+        else:
+            return f"{int(value)}gp"
+
+    msg = "**📊 Flips completed today:**\n"
+    for item, buy, sell, profit in flipped_items:
+        msg += f"{item.title()}: {format_price(buy)} - {format_price(sell)}"
+        msg += f" (**+{format_price(profit)}**)\n"
 
     try:
         await ctx.author.send(msg)
         await ctx.send("📬 I’ve sent your flips in DM.")
     except discord.Forbidden:
         await ctx.send("❌ I can't DM you. Please enable DMs from server members.")
+
+
 bot.run(TOKEN)
