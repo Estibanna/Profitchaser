@@ -158,6 +158,19 @@ async def record_sell(ctx, args):
             now = datetime.now(timezone.utc)
             avg_buy_price = round(total_cost / total_used_qty, 2) if total_used_qty > 0 else 0
 
+
+
+            print(f"[DEBUG] Profit for {item}: profit={profit}, avg_buy_price={avg_buy_price}, sell_price={price}")
+            if avg_buy_price == 0:
+                print("[WAARSCHUWING] Gemiddelde aankoopprijs is 0 — controleer of er stock was.")
+            
+            # (optioneel tijdelijke fallback om te voorkomen dat N/A verschijnt)
+            if avg_buy_price == 0:
+                avg_buy_price = price * 0.5  # tijdelijke oplossing om lege N/A te vermijden
+
+
+
+    
             c.execute("""
                 INSERT INTO profits (user_id, profit, timestamp, month, year, item, buy_price, sell_price)
                 VALUES (?, ?, ?, ?, ?, ?, ?, ?)
@@ -171,7 +184,6 @@ async def record_sell(ctx, args):
                 avg_buy_price,
                 price
             ))
-
         # Voeg verkoop toe aan flips (voor !reset)
         c.execute("""
             INSERT INTO flips (user_id, item, price, qty, type)
@@ -185,9 +197,6 @@ async def record_sell(ctx, args):
             if price <= max_price:
                 user = await bot.fetch_user(watcher_id)
 
-             
-           
-            
             conn.commit()
 
             # Check of iemand deze item trackt (watchlist-alert)
