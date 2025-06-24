@@ -4,8 +4,12 @@ import sqlite3
 import os
 
 from datetime import datetime, timezone, timedelta
-async def is_mod_or_owner(member):
-    return member.guild_permissions.manage_guild or member.guild_permissions.administrator
+OWNER_ROLE_ID = 1335385385387163698
+MOD_ROLE_ID = 1334261170433163385
+
+def is_mod_or_owner(member):
+    role_ids = [role.id for role in member.roles]
+    return OWNER_ROLE_ID in role_ids or MOD_ROLE_ID in role_ids
 
 # Stup
 TOKEN = os.getenv("TOKEN")
@@ -317,6 +321,36 @@ async def top(ctx, scope=None):
         user = await bot.fetch_user(uid)
         msg += f"{i}. {user.name}: {int(total):,} gp\n"
     await ctx.send(msg)
+
+
+@bot.command()
+async def topmod(ctx, scope=None):
+    now = datetime.now(timezone.utc)
+    if scope == "all":
+        c.execute("SELECT user_id, SUM(profit) FROM profits GROUP BY user_id ORDER BY SUM(profit) DESC")
+        title = "**👑 Top Mod Flippers of all time:**\n"
+    else:
+        c.execute("SELECT user_id, SUM(profit) FROM profits WHERE month=? GROUP BY user_id ORDER BY SUM(profit) DESC",
+                  (now.strftime("%Y-%m"),))
+        title = "**👑 Top Mod Flippers this month:**\n"
+
+    rows = c.fetchall()
+    if not rows:
+        await ctx.send("No leaderboard data.")
+        return
+
+    msg = title
+    count = 0
+    for uid, total in rows:
+        member = ctx.guild.get_member(uid)
+        if member and is_mod_or_owner(member):
+            count += 1
+            user = await bot.fetch_user(uid)
+            msg += f"{count}. {user.name}: {int(total):,} gp\n"
+        if count == 10:
+            break
+
+    await ctx.send(msg if count > 0 else "⚠️ No mod/owner flips found.")
 
 @bot.command()
 async def removewin(ctx):
