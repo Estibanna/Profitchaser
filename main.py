@@ -210,9 +210,7 @@ async def record_sell(ctx, args):
                     pass  # gebruiker staat DMs niet toe
 
         conn.commit()
-    except Exception as e:
-        await ctx.send("❌ Fout bij het verwerken van de verkoop.")
-        print("[SELL ERROR]", e)
+ 
 
 
         # Check of iemand deze item trackt (watchlist-alert)
