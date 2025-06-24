@@ -347,10 +347,20 @@ async def topmod(ctx, scope=None):
     count = 0
     for uid, total in rows:
         member = ctx.guild.get_member(uid)
+        print(f"[DEBUG] Checking user_id: {uid}")
+        if member:
+            print(f" - Member found: {member.name}")
+            print(" - Roles:")
+            for role in member.roles:
+                print(f"   * {role.name} ({role.id})")
+        else:
+            print(" - Member not found in this guild")
+    
         if member and is_mod_or_owner(member):
             user = await bot.fetch_user(uid)
             count += 1
             msg += f"{count}. {user.name}: {int(total):,} gp\n"
+    
         if count == 10:
             break
 
