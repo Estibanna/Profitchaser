@@ -687,9 +687,7 @@ async def help(ctx):
         "`!duelscore` – Check your current duel scores"
     ), inline=False)
 
-    embed.add_field(name="🔔 Price Alerts", value=(
-        "`!watch item price` – Alert if item drops below target"
-    ), inline=False)
+    
 
     embed.set_footer(text="Happy flipping! 🧠")
 
