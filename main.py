@@ -597,19 +597,26 @@ async def duelscore(ctx, opponent: discord.Member):
 
 
 @bot.command()
-async def watch(ctx, item: str, price: str):
+async def watch(ctx, *args):
     if ctx.author.name.lower() != "estibanna":
-        return  # Doe niets voor andere gebruikers
+        return  # Alleen Estibanna mag dit
+
+    if len(args) < 2:
+        await ctx.send("❌ Usage: `!watch item price`")
+        return
 
     try:
-        parsed_price = parse_price(price)
+        price_str = args[-1]
+        item = " ".join(args[:-1]).lower()
+        parsed_price = parse_price(price_str)
         c.execute("INSERT INTO watchlist (user_id, item, max_price) VALUES (?, ?, ?)",
-                  (ctx.author.id, item.lower(), parsed_price))
+                  (ctx.author.id, item, parsed_price))
         conn.commit()
         await ctx.send(f"🔔 Watching `{item}` for {int(parsed_price):,} gp or less.")
     except Exception as e:
         await ctx.send("❌ Usage: `!watch item price`")
         print(e)
+
 
 
 @bot.command()
