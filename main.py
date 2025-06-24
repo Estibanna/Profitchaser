@@ -56,6 +56,8 @@ conn.commit()
 
 
 try:
+    c.execute("ALTER TABLE profits ADD COLUMN buy_price REAL")
+    c.execute("ALTER TABLE profits ADD COLUMN sell_price REAL")
     c.execute("ALTER TABLE profits ADD COLUMN item TEXT")
     conn.commit()
 except sqlite3.OperationalError:
@@ -115,21 +117,33 @@ async def record_buy(ctx, args):
 
 
 # Sell handler
+@bot.command()
 async def record_sell(ctx, args):
     try:
         item, price, qty = parse_item_args(args)
         sell_price = price * 0.98
-        c.execute("SELECT rowid, price, qty FROM flips WHERE user_id=? AND item=? AND type='buy' ORDER BY timestamp",
-                  (ctx.author.id, item))
+
+        # Zoek alle aankopen van dit item in volgorde
+        c.execute("""
+            SELECT rowid, price, qty FROM flips
+            WHERE user_id=? AND item=? AND type='buy'
+            ORDER BY timestamp
+        """, (ctx.author.id, item))
         rows = c.fetchall()
+
         remaining = qty
         profit = 0
+        total_cost = 0
+        total_used_qty = 0
 
         for rowid, buy_price, buy_qty in rows:
             if remaining == 0:
                 break
             used = min(remaining, buy_qty)
             profit += (sell_price - buy_price) * used
+            total_cost += buy_price * used
+            total_used_qty += used
+
             new_qty = buy_qty - used
             if new_qty == 0:
                 c.execute("DELETE FROM flips WHERE rowid=?", (rowid,))
@@ -137,27 +151,38 @@ async def record_sell(ctx, args):
                 c.execute("UPDATE flips SET qty=? WHERE rowid=?", (new_qty, rowid))
             remaining -= used
 
+        # Registreer winst als er iets verkocht werd
         if qty - remaining > 0:
             now = datetime.now(timezone.utc)
-            c.execute("INSERT INTO profits (user_id, profit, timestamp, month, year, item) VALUES (?, ?, ?, ?, ?, ?)",
-                      (ctx.author.id, profit, now.isoformat(), now.strftime("%Y-%m"), now.strftime("%Y"), item))
+            avg_buy_price = round(total_cost / total_used_qty, 2) if total_used_qty > 0 else 0
 
-            # Voeg de sell toe aan flips zodat !reset werkt
-            c.execute("INSERT INTO flips (user_id, item, price, qty, type) VALUES (?, ?, ?, ?, 'sell')",
-                      (ctx.author.id, item, price, qty))
-            # Notificeer watchers uit de database
-            c.execute("SELECT user_id, max_price FROM watchlist WHERE item=?", (item,))
-            watchers = c.fetchall()
-            for watcher_id, max_price in watchers:
-                if price <= max_price:
-                    user = await bot.fetch_user(watcher_id)
-                    try:
-                        await user.send(f"🔔 `{item}` has been sold for {int(price):,} gp or less!")
-                        # Verwijder de watchlist-entry na melding
-                        c.execute("DELETE FROM watchlist WHERE user_id=? AND item=?", (watcher_id, item))
-                    except:
-                        pass  # gebruiker staat DMs niet toe
-                
+            c.execute("""
+                INSERT INTO profits (user_id, profit, timestamp, month, year, item, buy_price, sell_price)
+                VALUES (?, ?, ?, ?, ?, ?, ?, ?)
+            """, (
+                ctx.author.id,
+                profit,
+                now.isoformat(),
+                now.strftime("%Y-%m"),
+                now.strftime("%Y"),
+                item,
+                avg_buy_price,
+                price
+            ))
+
+        # Voeg verkoop toe aan flips (voor !reset)
+        c.execute("""
+            INSERT INTO flips (user_id, item, price, qty, type)
+            VALUES (?, ?, ?, ?, 'sell')
+        """, (ctx.author.id, item, price, qty))
+
+        # Waarschuw watchers
+        c.execute("SELECT user_id, max_price FROM watchlist WHERE item=?", (item,))
+        watchers = c.fetchall()
+        for watcher_id, max_price in watchers:
+            if price <= max_price:
+                user = await bot.fetch_user(_
+
              
            
             
@@ -741,49 +766,16 @@ async def fliptoday(ctx):
     today = datetime.now(timezone.utc).date().isoformat()
 
     c.execute("""
-        SELECT item, price, qty, type, timestamp
-        FROM flips
+        SELECT item, buy_price, sell_price, profit
+        FROM profits
         WHERE user_id = ? AND DATE(timestamp) = ?
-        ORDER BY timestamp
     """, (ctx.author.id, today))
     rows = c.fetchall()
 
     if not rows:
-        await ctx.send("📭 You haven't flipped anything today.")
+        await ctx.send("📭 You haven't completed any flips today.")
         return
 
-    # Verzamel buys/sells
-    buys = {}
-    sells = {}
-
-    for item, price, qty, flip_type, timestamp in rows:
-        key = item.lower()
-        if flip_type == "buy":
-            if key not in buys:
-                buys[key] = []
-            buys[key].append((price, qty, timestamp))
-        elif flip_type == "sell":
-            if key not in sells:
-                sells[key] = []
-            sells[key].append((price, qty, timestamp))
-
-
-    flipped_items = []
-    for item in set(buys.keys()) & set(sells.keys()):
-        lowest_buy = min([b[0] for b in buys[item]])
-        highest_sell = max([s[0] for s in sells[item]])
-        profit = highest_sell - lowest_buy
-        flipped_items.append((item, lowest_buy, highest_sell, profit))
-
-    if not flipped_items:
-        await ctx.send("📭 You haven't completed any flips today (buy + sell).")
-        return
-
-
-
-    
-
-    # Helper om af te ronden naar m/k/gp
     def format_price(value):
         if value >= 1_000_000:
             return f"{value / 1_000_000:.2f}".rstrip("0").rstrip(".") + "m"
@@ -792,7 +784,6 @@ async def fliptoday(ctx):
         else:
             return f"{int(value)}gp"
 
-    
     def format_profit(value):
         sign = "+" if value >= 0 else "-"
         value = abs(value)
@@ -802,20 +793,17 @@ async def fliptoday(ctx):
             return f"{sign}{value / 1_000:.2f}".rstrip("0").rstrip(".") + "k"
         else:
             return f"{sign}{int(value)}gp"
-    
 
-
-    
     msg = "**📊 Flips completed today:**\n"
-    for item, buy, sell, profit in flipped_items:
-        msg += f"{item.title()}: {format_price(buy)} - {format_price(sell)}"
-        msg += f" (**{format_profit(profit)}**)\n"
+    for item, buy, sell, profit in rows:
+        msg += f"{item.title()}: {format_price(buy)} - {format_price(sell)} (**{format_profit(profit)}**)\n"
 
     try:
         await ctx.author.send(msg)
         await ctx.send("📬 I’ve sent your flips in DM.")
     except discord.Forbidden:
         await ctx.send("❌ I can't DM you. Please enable DMs from server members.")
+
 
     
 bot.run(TOKEN)
