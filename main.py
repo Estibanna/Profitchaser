@@ -321,8 +321,9 @@ async def top(ctx, scope=None):
         member = ctx.guild.get_member(uid)
         if member and not is_mod_or_owner(member):
             user = await bot.fetch_user(uid)
+            display_name = member.display_name if member else user.name
             count += 1
-            msg += f"{count}. {user.name}: {int(total):,} gp\n"
+            msg += f"{count}. {display_name}: {int(total):,} gp\n"
         if count == 10:
             break
 
@@ -351,8 +352,9 @@ async def topmod(ctx, scope=None):
         member = ctx.guild.get_member(uid)
         if member and is_mod_or_owner(member):
             user = await bot.fetch_user(uid)
+            display_name = member.display_name if member else user.name
             count += 1
-            msg += f"{count}. {user.name}: {int(total):,} gp\n"
+            msg += f"{count}. {display_name}: {int(total):,} gp\n"
         if count == 10:
             break
 
