@@ -104,7 +104,7 @@ def parse_item_args(args):
 # Buy handler
 
 @bot.command(name="inb", aliases=["nib"])
-async def record_buy(ctx, args):
+async def record_buy(ctx, *args):
     try:
         item, price, qty = parse_item_args(args)
         item = item.lower()
@@ -127,7 +127,7 @@ async def record_buy(ctx, args):
 
 # Sell handler
 @bot.command(name="ins", aliases=["nis"])
-async def record_sell(ctx, args):
+async def record_sell(ctx, *args):
     try:
         item, price, qty = parse_item_args(args)
         item = item.lower()
