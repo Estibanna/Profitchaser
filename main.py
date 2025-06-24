@@ -2,7 +2,6 @@ import discord
 from discord.ext import commands
 import sqlite3
 import os
-
 from datetime import datetime, timezone, timedelta
 def is_mod_or_owner(member):
     role_names = [role.name.lower() for role in member.roles]
