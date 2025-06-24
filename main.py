@@ -341,24 +341,16 @@ async def top(ctx, scope=None):
     count = 0
 
     for uid, total in rows:
-        try:
-            member = ctx.guild.get_member(uid)
+        member = ctx.guild.get_member(uid)
+        if member and not is_mod_or_owner(member):
             user = await bot.fetch_user(uid)
-
-            # Sla mods/owners over (indien info beschikbaar)
-            if member and is_mod_or_owner(member):
-                continue
-
-            name = member.display_name if member else user.name
-            msg += f"{count + 1}. {name}: {int(total):,} gp\n"
+            display_name = member.display_name if member else user.name
             count += 1
-            if count == 10:
-                break
-        except:
-            continue
+            msg += f"{count}. {display_name}: {int(total):,} gp\n"
+        if count == 10:
+            break
 
     await ctx.send(msg if count > 0 else "⚠️ No flips found.")
-
 
 @bot.command()
 async def topmod(ctx, scope=None):
@@ -380,23 +372,16 @@ async def topmod(ctx, scope=None):
     count = 0
 
     for uid, total in rows:
-        try:
-            member = ctx.guild.get_member(uid)
+        member = ctx.guild.get_member(uid)
+        if member and is_mod_or_owner(member):
             user = await bot.fetch_user(uid)
-
-            # Alleen tonen als mod/owner
-            if not (member and is_mod_or_owner(member)):
-                continue
-
-            name = member.display_name if member else user.name
-            msg += f"{count + 1}. {name}: {int(total):,} gp\n"
+            display_name = member.display_name if member else user.name
             count += 1
-            if count == 10:
-                break
-        except:
-            continue
+            msg += f"{count}. {display_name}: {int(total):,} gp\n"
+        if count == 10:
+            break
 
-    await ctx.send(msg if count > 0 else "⚠️ No mod/owner flips found.")
+    await ctx.send(msg if count > 0 else "⚠️ No mod/owner flips found.") 
 
 
 
