@@ -74,16 +74,20 @@ conn.commit()
 
 
 # Price parsing
-
 def parse_price(price_str):
+    original = price_str  # Bewaar voor foutmelding
     price_str = price_str.lower().replace("gp", "").strip()
-    if "b" in price_str:
-        return float(price_str.replace("b", "")) * 1_000_000_000
-    elif "m" in price_str:
-        return float(price_str.replace("m", "")) * 1_000_000
-    elif "k" in price_str:
-        return float(price_str.replace("k", "")) * 1_000
-    return float(price_str)
+
+    if price_str.endswith("b"):
+        return float(price_str[:-1]) * 1_000_000_000
+    elif price_str.endswith("m"):
+        return float(price_str[:-1]) * 1_000_000
+    elif price_str.endswith("k"):
+        return float(price_str[:-1]) * 1_000
+    elif original.lower().endswith("gp"):
+        return float(price_str)
+    else:
+        raise ValueError("❌ Invalid price: include a unit like `k`, `m`, `b`, or `gp`.")
 
 # Generic parser
 def parse_item_args(args):
