@@ -11,7 +11,7 @@ from datetime import datetime, timezone, timedelta
 def is_mod_or_owner(member):
     role_names = [role.name.lower() for role in member.roles]
     return "mods" in role_names or "owners" in role_names
-
+ALLOWED_WATCH_USERS = {"estibanna", "noltie"}  # usernames in kleine letters
 # Stup
 TOKEN = os.getenv("TOKEN")
 intents = discord.Intents.default()
@@ -625,23 +625,31 @@ async def duelscore(ctx, opponent: discord.Member):
 
 @bot.command()
 async def watch(ctx, *args):
-    if ctx.author.name.lower() != "estibanna":
-        return  # Alleen Estibanna mag dit
+    if ctx.author.name.lower() not in ALLOWED_WATCH_USERS:
+        return  # Alleen toegestane users mogen dit
 
     if len(args) < 2:
-        await ctx.send("❌ Usage: `!watch item price`")
+        await ctx.send("❌ Usage: `!watch item price` (e.g. `!watch sirenic scale 10m`)")
         return
 
     try:
         price_str = args[-1]
         item = " ".join(args[:-1]).lower()
+
+        # Check op geldige eenheid
+        if not any(price_str.lower().endswith(suffix) for suffix in ["gp", "k", "m", "b"]):
+            raise ValueError("❌ Invalid price. Use `gp`, `k`, `m`, or `b` at the end.")
+
         parsed_price = parse_price(price_str)
+
         c.execute("INSERT INTO watchlist (user_id, item, max_price) VALUES (?, ?, ?)",
                   (ctx.author.id, item, parsed_price))
         conn.commit()
         await ctx.send(f"🔔 Watching `{item}` for {int(parsed_price):,} gp or less.")
+    except ValueError as ve:
+        await ctx.send(str(ve))
     except Exception as e:
-        await ctx.send("❌ Usage: `!watch item price`")
+        await ctx.send("❌ An error occurred while adding to your watchlist.")
         print(e)
 
 
