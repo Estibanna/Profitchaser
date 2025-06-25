@@ -800,6 +800,51 @@ async def fliptoday(ctx):
     except discord.Forbidden:
         await ctx.send("❌ I can't DM you. Please enable DMs from server members.")
 
+@bot.command()
+async def modundo(ctx, member: discord.Member, *, item: str):
+    if not is_mod_or_owner(ctx.author):
+        await ctx.send("❌ Only mods or owners can use this command.")
+        return
+
+    uid = member.id
+    item = item.lower()
+
+    # Haal laatste SELL op voor dat item
+    c.execute("""SELECT rowid, qty FROM flips 
+                 WHERE user_id=? AND item=? AND type='sell' 
+                 ORDER BY timestamp DESC LIMIT 1""", (uid, item))
+    sell = c.fetchone()
+
+    if not sell:
+        await ctx.send(f"⚠️ No recent sell found for `{item}` from {member.display_name}.")
+        return
+
+    sell_rowid, qty = sell
+
+    # Verwijder SELL
+    c.execute("DELETE FROM flips WHERE rowid=?", (sell_rowid,))
+
+    # Probeer recentste buy op te krikken (mag imperfect zijn)
+    c.execute("""SELECT rowid FROM flips 
+                 WHERE user_id=? AND item=? AND type='buy' 
+                 ORDER BY timestamp DESC LIMIT 1""", (uid, item))
+    buy = c.fetchone()
+    if buy:
+        c.execute("UPDATE flips SET qty = qty + ? WHERE rowid=?", (qty, buy[0]))
+    else:
+        c.execute("""INSERT INTO flips (user_id, item, price, qty, type) 
+                     VALUES (?, ?, 0, ?, 'buy')""", (uid, item, qty))
+
+    # Verwijder laatste profit voor dat item
+    c.execute("""SELECT rowid FROM profits 
+                 WHERE user_id=? AND item=? 
+                 ORDER BY timestamp DESC LIMIT 1""", (uid, item))
+    profit = c.fetchone()
+    if profit:
+        c.execute("DELETE FROM profits WHERE rowid=?", (profit[0],))
+
+    conn.commit()
+    await ctx.send(f"↩️ Last `{item}` flip from {member.display_name} has been undone.")
 
     
 bot.run(TOKEN)
