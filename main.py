@@ -126,8 +126,13 @@ async def record_buy(ctx, args):
 # Sell handler
 async def record_sell(ctx, args):
     try:
+        is_p2p = False
+        if args and args[-1].lower() == "p2p":
+            args = args[:-1]  # Remove 'p2p' from args
+            is_p2p = True
+
         item, price, qty = parse_item_args(args)
-        sell_price = price * 0.98
+        sell_price = price if is_p2p else price * 0.98
         c.execute("SELECT rowid, price, qty FROM flips WHERE user_id=? AND item=? AND type='buy' ORDER BY timestamp",
                   (ctx.author.id, item))
         rows = c.fetchall()
@@ -336,11 +341,11 @@ async def top(ctx, scope=None):
     now = datetime.now(timezone.utc)
     if scope == "all":
         c.execute("SELECT user_id, SUM(profit) FROM profits GROUP BY user_id ORDER BY SUM(profit) DESC")
-        title = "**🏆 Top flippers of all time (non-mods):**\n"
+        title = "**🏆 Top flippers of all time:**\n"
     else:
         c.execute("SELECT user_id, SUM(profit) FROM profits WHERE month=? GROUP BY user_id ORDER BY SUM(profit) DESC",
                   (now.strftime("%Y-%m"),))
-        title = "**🏆 Top flippers this month (non-mods):**\n"
+        title = "**🏆 Top flippers this month:**\n"
 
     rows = c.fetchall()
     msg = title
@@ -495,6 +500,16 @@ async def day(ctx):
     total = int(row[0]) if row and row[0] else 0
     await ctx.send(f"📅 Your profit today: {total:,} gp")
 
+
+@bot.command()
+async def week(ctx):
+    one_week_ago = datetime.now(timezone.utc) - timedelta(days=7)
+    c.execute("SELECT SUM(profit) FROM profits WHERE user_id=? AND timestamp >= ?", (ctx.author.id, one_week_ago.isoformat()))
+    row = c.fetchone()
+    total = int(row[0]) if row and row[0] else 0
+    await ctx.send(f"🗓️ Your profit in the last 7 days: {total:,} gp")
+
+
 @bot.command()
 async def month(ctx):
     current_month = datetime.now(timezone.utc).strftime("%Y-%m")
@@ -597,10 +612,11 @@ async def duel(ctx, opponent: discord.Member):
         return
 
     start_time = datetime.now(timezone.utc)
-    end_time = start_time + timedelta(days=1)
     active_duels[key] = start_time
+    save_duels()  # Save after starting a duel
 
     await ctx.send(f"🏁 Duel started between <@{user1}> and <@{user2}>! Ends in 24h.")
+
 
 @bot.command()
 async def duelscore(ctx, opponent: discord.Member):
@@ -613,16 +629,67 @@ async def duelscore(ctx, opponent: discord.Member):
         return
 
     start_time = active_duels[key]
+    now = datetime.now(timezone.utc)
 
-    c.execute("SELECT user_id, SUM(profit) FROM profits WHERE (user_id=? OR user_id=?) AND timestamp >= ? GROUP BY user_id",
-              (user1, user2, start_time.isoformat()))
+    # Check if the duel has expired
+    if now > start_time + timedelta(days=1):
+        # Fetch scores
+        c.execute("""
+            SELECT user_id, SUM(profit) FROM profits
+            WHERE (user_id = ? OR user_id = ?) AND timestamp >= ?
+            GROUP BY user_id
+        """, (user1, user2, start_time.isoformat()))
+        rows = c.fetchall()
+
+        scores = {user1: 0, user2: 0}
+        for uid, total in rows:
+            scores[uid] = total
+
+        winner = None
+        if scores[user1] > scores[user2]:
+            winner = user1
+        elif scores[user2] > scores[user1]:
+            winner = user2
+
+        # End the duel
+        del active_duels[key]
+
+        # Find the #bot-talk channel
+        bot_talk_channel = discord.utils.get(ctx.guild.text_channels, name="bot-talk")
+        if bot_talk_channel:
+            if winner:
+                await bot_talk_channel.send(
+                    f"🏆 The duel between <@{user1}> and <@{user2}> has ended!\n"
+                    f"🎉 <@{winner}> wins with {scores[winner]:,.0f} gp!"
+                )
+            else:
+                await bot_talk_channel.send(
+                    f"🤝 The duel between <@{user1}> and <@{user2}> ended in a tie!"
+                )
+        else:
+            await ctx.send("⚠️ Could not find the #bot-talk channel to announce the winner.")
+
+        await ctx.send("⏰ The duel has expired and is now over.")
+        return
+
+    # Duel is still active
+    c.execute("""
+        SELECT user_id, SUM(profit) FROM profits
+        WHERE (user_id = ? OR user_id = ?) AND timestamp >= ?
+        GROUP BY user_id
+    """, (user1, user2, start_time.isoformat()))
     rows = c.fetchall()
 
     scores = {user1: 0, user2: 0}
     for uid, total in rows:
         scores[uid] = total
 
-    await ctx.send(f"📊 Duel score:\n<@{user1}>: {scores[user1]:,.0f} gp\n<@{user2}>: {scores[user2]:,.0f} gp")
+    await ctx.send(
+        f"📊 Duel score (still ongoing):\n"
+        f"<@{user1}>: {scores[user1]:,.0f} gp\n"
+        f"<@{user2}>: {scores[user2]:,.0f} gp"
+    )
+
 
 
 @bot.command()
