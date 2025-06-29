@@ -760,6 +760,9 @@ async def help(ctx):
         "`!nis item price`\n"
         "`!ins item price x2`\n"
         "➤ Sell items and calculate profit (GE tax)"
+    ), inline=False)
+    embed.add_field(name="💸 P2P sales", value=(
+        "`!nis item price`p2p\n"
         "`!nis item price x2 p2p`\n" 
         "➤ Sell items p2p (without tax)"
     ), inline=False)
