@@ -613,7 +613,7 @@ async def duel(ctx, opponent: discord.Member):
 
     start_time = datetime.now(timezone.utc)
     active_duels[key] = start_time
-    save_duels()  # Save after starting a duel
+    #save_duels()  # Save after starting a duel
 
     await ctx.send(f"🏁 Duel started between <@{user1}> and <@{user2}>! Ends in 24h.")
 
