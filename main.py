@@ -761,7 +761,6 @@ async def help(ctx):
         "`!ins item price x2`\n"
         "➤ Sell items and calculate profit (GE tax)"
         "`!nis item price x2 p2p`\n" 
-        "`!nis item price p2p`\n" 
         "➤ Sell items p2p (without tax)"
     ), inline=False)
 
