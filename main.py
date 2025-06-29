@@ -760,6 +760,9 @@ async def help(ctx):
         "`!nis item price`\n"
         "`!ins item price x2`\n"
         "➤ Sell items and calculate profit (GE tax)"
+        "`!nis item price x2 p2p`\n" 
+        "`!nis item price p2p`\n" 
+        "➤ Sell items p2p (without tax)"
     ), inline=False)
 
     embed.add_field(name="📦 Inventory", value=(
@@ -776,6 +779,7 @@ async def help(ctx):
 
     embed.add_field(name="📈 Profit Tracking", value=(
         "`!day` – Today's profit\n"
+        "`!week` – Last week's profit\n"
         "`!month` – This month's profit\n"
         "`!year` – This year's profit"
     ), inline=False)
