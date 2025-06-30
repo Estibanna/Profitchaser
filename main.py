@@ -12,7 +12,7 @@ def is_mod_or_owner(member):
     role_names = [role.name.lower() for role in member.roles]
     return "mods" in role_names or "owners" in role_names
 ALLOWED_WATCH_USERS = {"estibanna", "noltie"}  # usernames in kleine letters
-BLOCKED_IDS = {234086314465689610}
+
 # Stup
 TOKEN = os.getenv("TOKEN")
 intents = discord.Intents.default()
