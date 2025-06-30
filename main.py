@@ -16,6 +16,7 @@ ALLOWED_WATCH_USERS = {"estibanna", "noltie"}  # usernames in kleine letters
 TRIAL_FILE = "data/trials.json"
 TRIAL_ROLE_NAME = "Millionaire"
 
+
 # Ensure trials file exists
 if not os.path.exists(TRIAL_FILE):
     with open(TRIAL_FILE, "w") as f:
@@ -28,6 +29,22 @@ def load_trials():
 def save_trials(data):
     with open(TRIAL_FILE, "w") as f:
         json.dump(data, f)
+
+
+DUELS_FILE = "data/duels.json"
+
+def load_duels():
+    if os.path.exists(DUELS_FILE):
+        with open(DUELS_FILE, "r") as f:
+            data = json.load(f)
+            return {tuple(map(int, k.split(","))): datetime.fromisoformat(v) for k, v in data.items()}
+    return {}
+
+def save_duels():
+    with open(DUELS_FILE, "w") as f:
+        data = {f"{k[0]},{k[1]}": v.isoformat() for k, v in active_duels.items()}
+        json.dump(data, f)
+
 # Stup
 TOKEN = os.getenv("TOKEN")
 intents = discord.Intents.default()
@@ -311,9 +328,11 @@ async def before_trial_check():
 @bot.event
 async def on_ready():
     print(f"✅ Logged in as {bot.user}")
+    global active_duels
+    active_duels = load_duels()
     if not check_trial_expiry.is_running():
         check_trial_expiry.start()
-
+        
 @bot.command()
 async def nib(ctx, *args):
     if isinstance(ctx.channel, discord.DMChannel) and ctx.author.name.lower() != "sdw2003":
