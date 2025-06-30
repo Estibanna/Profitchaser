@@ -12,6 +12,7 @@ def is_mod_or_owner(member):
     role_names = [role.name.lower() for role in member.roles]
     return "mods" in role_names or "owners" in role_names
 ALLOWED_WATCH_USERS = {"estibanna", "noltie"}  # usernames in kleine letters
+BLOCKED_IDS = {234086314465689610}
 # Stup
 TOKEN = os.getenv("TOKEN")
 intents = discord.Intents.default()
@@ -121,7 +122,11 @@ async def record_buy(ctx, args):
         print(e)
         print("✅ Inserted flip into database.")
         print("📂 Current DB path:", os.path.abspath("data/flips.db"))
-
+@bot.event
+async def on_message(message):
+    if message.author.id in BLOCKED_IDS:
+        return  # Blokkeer alle interactie voor deze gebruiker
+    await bot.process_commands(message)
 
 # Sell handler
 async def record_sell(ctx, args):
@@ -933,9 +938,5 @@ async def modundo(ctx, member: discord.Member, *, item: str):
     conn.commit()
     await ctx.send(f"↩️ Last `{item}` flip from {member.display_name} has been undone.")
 
-    @bot.event
-    async def on_message(message):
-        if message.author.name.lower() == "ayew":
-            return  # Blokkeer alle interactie van gebruiker 'ayew'
-        await bot.process_commands(message)
+  
 bot.run(TOKEN)
