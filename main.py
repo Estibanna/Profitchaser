@@ -933,6 +933,25 @@ async def modundo(ctx, member: discord.Member, *, item: str):
 
     conn.commit()
     await ctx.send(f"↩️ Last `{item}` flip from {member.display_name} has been undone.")
+    
+    @bot.command()
+    async def profit(ctx, *, item: str):
+        item = item.lower()
+    
+        # Haal totaal winst en aantal flips op voor dat item
+        c.execute("""
+            SELECT COUNT(*), SUM(profit)
+            FROM profits
+            WHERE user_id = ? AND item = ?
+        """, (ctx.author.id, item))
+    
+        row = c.fetchone()
+        if row and row[0]:
+            count, total_profit = row
+            formatted = format_price(total_profit)
+            await ctx.send(f"📈 You have flipped `{count}`x **{item}** with a total profit of **{formatted}**.")
+        else:
+            await ctx.send(f"❌ No profit data found for `{item}`.")
 
   
 bot.run(TOKEN)
