@@ -933,5 +933,9 @@ async def modundo(ctx, member: discord.Member, *, item: str):
     conn.commit()
     await ctx.send(f"↩️ Last `{item}` flip from {member.display_name} has been undone.")
 
-    
+    @bot.event
+    async def on_message(message):
+        if message.author.name.lower() == "ayew":
+            return  # Blokkeer alle interactie van gebruiker 'ayew'
+        await bot.process_commands(message)
 bot.run(TOKEN)
