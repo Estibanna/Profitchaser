@@ -13,7 +13,7 @@ def is_mod_or_owner(member):
     return "mods" in role_names or "owners" in role_names
 ALLOWED_WATCH_USERS = {"estibanna", "noltie"}  # usernames in kleine letters
 # Stup
-TOKEN = os.getenv("TOKEN")
+TOKEN = os.getenv("TOKEN"
 intents = discord.Intents.default()
 intents.message_content = True
 intents.members = True
