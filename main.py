@@ -303,7 +303,7 @@ async def check_trial_expiry():
 async def before_trial_check():
     await bot.wait_until_ready()
 
-check_trial_expiry.start()
+
 
 
 # Commands
@@ -311,6 +311,8 @@ check_trial_expiry.start()
 @bot.event
 async def on_ready():
     print(f"✅ Logged in as {bot.user}")
+    if not check_trial_expiry.is_running():
+        check_trial_expiry.start()
 
 @bot.command()
 async def nib(ctx, *args):
