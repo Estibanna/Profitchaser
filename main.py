@@ -122,11 +122,7 @@ async def record_buy(ctx, args):
         print(e)
         print("✅ Inserted flip into database.")
         print("📂 Current DB path:", os.path.abspath("data/flips.db"))
-@bot.event
-async def on_message(message):
-    if message.author.id in BLOCKED_IDS:
-        return  # Blokkeer alle interactie voor deze gebruiker
-    await bot.process_commands(message)
+
 
 # Sell handler
 async def record_sell(ctx, args):
