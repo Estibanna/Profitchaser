@@ -430,7 +430,7 @@ async def reset(ctx, scope=None):
         await ctx.send("🗑️ All your flip and profit history has been deleted.")
         return
 
-    # Laatste transactie ophalen, ongeacht type
+    # Laatste transactie ophalen (buy of sell)
     c.execute("""
         SELECT rowid, item, price, qty, type, timestamp
         FROM flips
@@ -443,48 +443,49 @@ async def reset(ctx, scope=None):
         await ctx.send("⚠️ You have no flips to reset.")
         return
 
-    rowid, item, price, qty, type_, timestamp = last
+    rowid, item, sell_price, qty, type_, timestamp = last
     item = item.lower()
 
-    # Verwijder de transactie
-    c.execute("DELETE FROM flips WHERE rowid=?", (rowid,))
-
     if type_ == "buy":
-        # BUY terugdraaien = gewoon verwijderen
+        # BUY terugdraaien = verwijderen
+        c.execute("DELETE FROM flips WHERE rowid=?", (rowid,))
         conn.commit()
         await ctx.send(f"↩️ Last buy of `{item}` has been removed.")
         return
 
     elif type_ == "sell":
-        # SELL terugdraaien = winst + voorraad herstellen
+        # SELL terugdraaien: eerst bepalen welke buys gebruikt zijn
 
-        # Vind gebruikte aankoopregels
+        # Zoek ALLE aankopen vóór deze verkoop
         c.execute("""
             SELECT rowid, price, qty
             FROM flips
-            WHERE user_id=? AND item=? AND type='buy' AND timestamp <= ?
+            WHERE user_id=? AND item=? AND type='buy'
             ORDER BY timestamp
-        """, (ctx.author.id, item, timestamp))
+        """, (ctx.author.id, item))
         buys = c.fetchall()
 
         remaining = qty
-        restored = []
+        used_buys = []
 
         for buy_rowid, buy_price, buy_qty in buys:
             if remaining == 0:
                 break
             used = min(remaining, buy_qty)
-            restored.append((buy_price, used))
+            used_buys.append((buy_price, used))
             remaining -= used
 
-        # Zet terug in voorraad
-        for price_restored, q_restored in restored:
+        # Verwijder de SELL
+        c.execute("DELETE FROM flips WHERE rowid=?", (rowid,))
+
+        # Herstel de voorraad (koop opnieuw toe met originele prijzen)
+        for price, q in used_buys:
             c.execute("""
                 INSERT INTO flips (user_id, item, price, qty, type)
                 VALUES (?, ?, ?, ?, 'buy')
-            """, (ctx.author.id, item, price_restored, q_restored))
+            """, (ctx.author.id, item, price, q))
 
-        # Verwijder juiste winstregel (laatste)
+        # Verwijder laatste winstregel van dit item
         c.execute("""
             SELECT rowid FROM profits
             WHERE user_id=? AND item=?
@@ -498,7 +499,6 @@ async def reset(ctx, scope=None):
         await ctx.send(f"↩️ Last sell of `{item}` has been undone and {qty}x returned to inventory.")
         return
 
-    
 
 @bot.command()
 async def delete(ctx, *args):
