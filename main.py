@@ -2,7 +2,8 @@
 
 
 
-
+from discord.ext import tasks
+import json
 import discord
 from discord.ext import commands
 import sqlite3
@@ -11,7 +12,25 @@ from datetime import datetime, timezone, timedelta
 def is_mod_or_owner(member):
     role_names = [role.name.lower() for role in member.roles]
     return "mods" in role_names or "owners" in role_names
+
 ALLOWED_WATCH_USERS = {"estibanna", "noltie"}  # usernames in kleine letters
+TRIAL_FILE = "data/trials.json"
+TRIAL_ROLE_NAME = "Millionaire"
+
+# Zorg dat trials.json bestaat
+if not os.path.exists(TRIAL_FILE):
+    with open(TRIAL_FILE, "w") as f:
+        json.dump({}, f)
+
+def load_trials():
+    with open(TRIAL_FILE, "r") as f:
+        return json.load(f)
+
+def save_trials(data):
+    with open(TRIAL_FILE, "w") as f:
+        json.dump(data, f)
+        
+
 # Stup
 TOKEN = os.getenv("TOKEN")
 intents = discord.Intents.default()
@@ -976,27 +995,6 @@ async def modundo(ctx, member: discord.Member, *, item: str):
     conn.commit()
     await ctx.send(f"↩️ Last `{item}` flip from {member.display_name} has been undone.")
 
-    
-bot.run(TOKEN)
-
-from discord.ext import tasks
-import json
-
-TRIAL_FILE = "data/trials.json"
-TRIAL_ROLE_NAME = "Millionaire"
-
-# Zorg dat trials.json bestaat
-if not os.path.exists(TRIAL_FILE):
-    with open(TRIAL_FILE, "w") as f:
-        json.dump({}, f)
-
-def load_trials():
-    with open(TRIAL_FILE, "r") as f:
-        return json.load(f)
-
-def save_trials(data):
-    with open(TRIAL_FILE, "w") as f:
-        json.dump(data, f)
 
 @bot.command()
 async def trial(ctx, member: discord.Member = None):
@@ -1065,3 +1063,9 @@ async def before_trial_check():
     await bot.wait_until_ready()
 
 check_trial_expiry.start()
+    
+bot.run(TOKEN)
+
+
+
+
