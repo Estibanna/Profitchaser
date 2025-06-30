@@ -978,3 +978,90 @@ async def modundo(ctx, member: discord.Member, *, item: str):
 
     
 bot.run(TOKEN)
+
+from discord.ext import tasks
+import json
+
+TRIAL_FILE = "data/trials.json"
+TRIAL_ROLE_NAME = "Millionaire"
+
+# Zorg dat trials.json bestaat
+if not os.path.exists(TRIAL_FILE):
+    with open(TRIAL_FILE, "w") as f:
+        json.dump({}, f)
+
+def load_trials():
+    with open(TRIAL_FILE, "r") as f:
+        return json.load(f)
+
+def save_trials(data):
+    with open(TRIAL_FILE, "w") as f:
+        json.dump(data, f)
+
+@bot.command()
+async def trial(ctx, member: discord.Member = None):
+    if member is None:
+        member = ctx.author
+
+    # Laad bestaande trials
+    trials = load_trials()
+
+    # Reeds gehad?
+    if str(member.id) in trials:
+        await ctx.send(f"❌ <@{member.id}> has already received a trial before.")
+        return
+
+    role = discord.utils.get(ctx.guild.roles, name=TRIAL_ROLE_NAME)
+    if not role:
+        await ctx.send("❌ Role 'Millionaire' not found.")
+        return
+
+    if role in member.roles:
+        await ctx.send(f"⚠️ <@{member.id}> already has the role.")
+        return
+
+    # Voeg rol toe
+    await member.add_roles(role)
+    trials[str(member.id)] = {
+        "start": datetime.now(timezone.utc).isoformat(),
+        "end": (datetime.now(timezone.utc) + timedelta(days=7)).isoformat()
+    }
+    save_trials(trials)
+
+    await ctx.send(f"✅ Trial started for <@{member.id}>. The role will be removed automatically in 7 days.")
+
+# Task die elke 6 uur controleert
+@tasks.loop(hours=6)
+async def check_trial_expiry():
+    now = datetime.now(timezone.utc)
+    trials = load_trials()
+    updated = False
+
+    for guild in bot.guilds:
+        role = discord.utils.get(guild.roles, name=TRIAL_ROLE_NAME)
+        if not role:
+            continue
+
+        for uid, info in list(trials.items()):
+            try:
+                end_time = datetime.fromisoformat(info["end"])
+                if now >= end_time:
+                    member = guild.get_member(int(uid))
+                    if member and role in member.roles:
+                        await member.remove_roles(role)
+                        channel = discord.utils.get(guild.text_channels, name="bot-talk")
+                        if channel:
+                            await channel.send(f"⏳ The trial of <@{uid}> has expired. Role removed.")
+                    del trials[uid]
+                    updated = True
+            except Exception as e:
+                print(f"[trial-check] Error with {uid}: {e}")
+
+    if updated:
+        save_trials(trials)
+
+@check_trial_expiry.before_loop
+async def before_trial_check():
+    await bot.wait_until_ready()
+
+check_trial_expiry.start()
