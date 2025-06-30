@@ -579,18 +579,24 @@ async def flips(ctx):
 
 
 
-# Globale dict om track requests bij te houden
-user_track_requests = {}
-
 @bot.command()
-async def track(ctx, item: str, price: str):
-    try:
-        gp_price = parse_price(price)  # Zorg dat deze functie bestaat zoals elders in je code
-        user_track_requests.setdefault(ctx.author.id, []).append((item.lower(), gp_price))
-        await ctx.send(f"🔔 Tracking `{item}`. You'll get a DM if it drops below {price}.")
-    except Exception as e:
-        await ctx.send("❌ Usage: `!track [item] [price]`")
-        print(e)
+async def profit(ctx, *, item: str):
+    item = item.lower()
+
+    # Haal totaal winst en aantal flips op voor dat item
+    c.execute("""
+        SELECT COUNT(*), SUM(profit)
+        FROM profits
+        WHERE user_id = ? AND item = ?
+    """, (ctx.author.id, item))
+
+    row = c.fetchone()
+    if row and row[0]:
+        count, total_profit = row
+        formatted = format_price(total_profit)
+        await ctx.send(f"📈 You have flipped `{count}`x **{item}** with a total profit of **{formatted}**.")
+    else:
+        await ctx.send(f"❌ No profit data found for `{item}`.")
 
 
 
@@ -691,24 +697,7 @@ async def duelscore(ctx, opponent: discord.Member):
         f"<@{user2}>: {scores[user2]:,.0f} gp"
     )
     
- @bot.command()
-    async def profit(ctx, *, item: str):
-        item = item.lower()
-    
-        # Haal totaal winst en aantal flips op voor dat item
-        c.execute("""
-            SELECT COUNT(*), SUM(profit)
-            FROM profits
-            WHERE user_id = ? AND item = ?
-        """, (ctx.author.id, item))
-    
-        row = c.fetchone()
-        if row and row[0]:
-            count, total_profit = row
-            formatted = format_price(total_profit)
-            await ctx.send(f"📈 You have flipped `{count}`x **{item}** with a total profit of **{formatted}**.")
-        else:
-            await ctx.send(f"❌ No profit data found for `{item}`.")
+
 
 
 @bot.command()
