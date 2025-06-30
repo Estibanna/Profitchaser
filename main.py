@@ -247,13 +247,21 @@ def get_flipper_rank(total_profit):
 
 
 
+@check_trial_expiry.before_loop
+async def before_trial_check():
+    await bot.wait_until_ready()
 
+@bot.event
+async def on_ready():
+    print(f"✅ Logged in as {bot.user}")
+    check_trial_expiry.start()  # ✅ start loop here
 
 # Commands
 
 @bot.event
 async def on_ready():
     print(f"✅ Logged in as {bot.user}")
+    check_trial_expiry.start()
 
 @bot.command()
 async def nib(ctx, *args):
@@ -1058,11 +1066,6 @@ async def check_trial_expiry():
     if updated:
         save_trials(trials)
 
-@check_trial_expiry.before_loop
-async def before_trial_check():
-    await bot.wait_until_ready()
-
-check_trial_expiry.start()
     
 bot.run(TOKEN)
 
