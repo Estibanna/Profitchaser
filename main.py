@@ -87,6 +87,14 @@ CREATE TABLE IF NOT EXISTS watchlist (
 )
 """)
 
+c.execute("""
+CREATE TABLE IF NOT EXISTS sell_details (
+    sell_rowid INTEGER,
+    buy_price REAL,
+    qty_used INTEGER
+)
+""")
+
 conn.commit()
 
 
@@ -152,13 +160,12 @@ async def record_buy(ctx, args):
         print("✅ Inserted flip into database.")
         print("📂 Current DB path:", os.path.abspath("data/flips.db"))
 
-
-# Sell handler
+#sell_handle
 async def record_sell(ctx, args):
     try:
         is_p2p = False
         if args and args[-1].lower() == "p2p":
-            args = args[:-1]  # Remove 'p2p' from args
+            args = args[:-1]
             is_p2p = True
 
         item, price, qty = parse_item_args(args)
@@ -168,12 +175,14 @@ async def record_sell(ctx, args):
         rows = c.fetchall()
         remaining = qty
         profit = 0
+        sell_details = []  # ← Nieuw: om bij te houden wat er is gebruikt
 
         for rowid, buy_price, buy_qty in rows:
             if remaining == 0:
                 break
             used = min(remaining, buy_qty)
             profit += (sell_price - buy_price) * used
+            sell_details.append((buy_price, used))  # ← Log de gebruikte buy
             new_qty = buy_qty - used
             if new_qty == 0:
                 c.execute("DELETE FROM flips WHERE rowid=?", (rowid,))
@@ -186,9 +195,23 @@ async def record_sell(ctx, args):
             c.execute("INSERT INTO profits (user_id, profit, timestamp, month, year, item) VALUES (?, ?, ?, ?, ?, ?)",
                       (ctx.author.id, profit, now.isoformat(), now.strftime("%Y-%m"), now.strftime("%Y"), item))
 
-            # Voeg de sell toe aan flips zodat !reset werkt
+            # Voeg sell toe zodat !reset weet wat de verkoop was
             c.execute("INSERT INTO flips (user_id, item, price, qty, type) VALUES (?, ?, ?, ?, 'sell')",
                       (ctx.author.id, item, price, qty))
+            
+            # Haal rowid van zojuist toegevoegde sell op
+            c.execute("""SELECT rowid FROM flips 
+                         WHERE user_id=? AND item=? AND price=? AND qty=? AND type='sell' 
+                         ORDER BY timestamp DESC LIMIT 1""",
+                      (ctx.author.id, item, price, qty))
+            sell_row = c.fetchone()
+            if sell_row:
+                sell_rowid = sell_row[0]
+                # Voeg gebruikte buys toe aan sell_details-tabel
+                for buy_price, used_qty in sell_details:
+                    c.execute("INSERT INTO sell_details (sell_rowid, buy_price, qty_used) VALUES (?, ?, ?)",
+                              (sell_rowid, buy_price, used_qty))
+
             # Notificeer watchers uit de database
             c.execute("SELECT user_id, max_price FROM watchlist WHERE item=?", (item,))
             watchers = c.fetchall()
@@ -197,34 +220,26 @@ async def record_sell(ctx, args):
                     user = await bot.fetch_user(watcher_id)
                     try:
                         await user.send(f"🔔 `{item}` has been sold for {int(price):,} gp or less!")
-                        # Verwijder de watchlist-entry na melding
                         c.execute("DELETE FROM watchlist WHERE user_id=? AND item=?", (watcher_id, item))
                     except:
-                        pass  # gebruiker staat DMs niet toe
-                
-             
-           
-            
+                        pass
+
             conn.commit()
 
-            # Check of iemand deze item trackt (watchlist-alert)
+            # Check user_track_requests alerts
             for user_id, items in user_track_requests.items():
                 for tracked_item, limit_price in items:
                     if tracked_item == item.lower() and sell_price <= limit_price:
                         user = await bot.fetch_user(user_id)
                         if user:
                             await user.send(f"📉 `{item}` just hit `{price}` (below your `{limit_price}` alert)")
-                            break  # Stuur max 1 bericht per user
-
+                            break
         else:
             await ctx.send("⚠️ Not enough stock to sell.")
 
     except Exception as e:
         await ctx.send("❌ Invalid input for sell. Use `!nis <item> <price> [x<qty>]`")
-        print(e)
-
-
-
+        print("[SELL ERROR]", e)
 def get_flipper_rank(total_profit):
     if total_profit >= 1_000_000_000_000:
         return "🪙 Flipping Titan"
@@ -516,10 +531,12 @@ async def removewin(ctx):
     await ctx.send("💸 All your recorded profits have been removed.")
 
 @bot.command()
+@bot.command()
 async def reset(ctx, scope=None):
     if scope == "all":
         c.execute("DELETE FROM flips WHERE user_id=?", (ctx.author.id,))
         c.execute("DELETE FROM profits WHERE user_id=?", (ctx.author.id,))
+        c.execute("DELETE FROM sell_details WHERE sell_rowid IN (SELECT rowid FROM flips WHERE user_id=? AND type='sell')", (ctx.author.id,))
         conn.commit()
         await ctx.send("🗑️ All your flip and profit history has been deleted.")
         return
@@ -541,45 +558,32 @@ async def reset(ctx, scope=None):
     item = item.lower()
 
     if type_ == "buy":
-        # BUY terugdraaien = verwijderen
         c.execute("DELETE FROM flips WHERE rowid=?", (rowid,))
         conn.commit()
         await ctx.send(f"↩️ Last buy of `{item}` has been removed.")
         return
 
     elif type_ == "sell":
-        # SELL terugdraaien: eerst bepalen welke buys gebruikt zijn
+        # Gebruik sell_details om exact te herstellen
+        c.execute("SELECT buy_price, qty_used FROM sell_details WHERE sell_rowid=?", (rowid,))
+        used_buys = c.fetchall()
 
-        # Zoek ALLE aankopen vóór deze verkoop
-        c.execute("""
-            SELECT rowid, price, qty
-            FROM flips
-            WHERE user_id=? AND item=? AND type='buy'
-            ORDER BY timestamp
-        """, (ctx.author.id, item))
-        buys = c.fetchall()
+        if not used_buys:
+            await ctx.send("⚠️ Cannot undo sell – no matching sell details found.")
+            return
 
-        remaining = qty
-        used_buys = []
-
-        for buy_rowid, buy_price, buy_qty in buys:
-            if remaining == 0:
-                break
-            used = min(remaining, buy_qty)
-            used_buys.append((buy_price, used))
-            remaining -= used
-
-        # Verwijder de SELL
+        # Verwijder de verkoop zelf + details
         c.execute("DELETE FROM flips WHERE rowid=?", (rowid,))
+        c.execute("DELETE FROM sell_details WHERE sell_rowid=?", (rowid,))
 
-        # Herstel de voorraad (koop opnieuw toe met originele prijzen)
-        for price, q in used_buys:
+        # Zet de aankopen terug in voorraad
+        for buy_price, q in used_buys:
             c.execute("""
                 INSERT INTO flips (user_id, item, price, qty, type)
                 VALUES (?, ?, ?, ?, 'buy')
-            """, (ctx.author.id, item, price, q))
+            """, (ctx.author.id, item, buy_price, q))
 
-        # Verwijder laatste winstregel van dit item
+        # Verwijder bijbehorende winstregel
         c.execute("""
             SELECT rowid FROM profits
             WHERE user_id=? AND item=?
@@ -592,6 +596,7 @@ async def reset(ctx, scope=None):
         conn.commit()
         await ctx.send(f"↩️ Last sell of `{item}` has been undone and {qty}x returned to inventory.")
         return
+
 
 
 @bot.command()
