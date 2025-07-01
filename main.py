@@ -530,7 +530,7 @@ async def removewin(ctx):
     conn.commit()
     await ctx.send("💸 All your recorded profits have been removed.")
 
-@bot.command()
+
 @bot.command()
 async def reset(ctx, scope=None):
     if scope == "all":
