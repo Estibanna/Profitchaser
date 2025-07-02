@@ -317,7 +317,7 @@ async def check_trial_expiry():
                     member = guild.get_member(int(uid))
                     if member and role in member.roles:
                         await member.remove_roles(role)
-                        channel = discord.utils.get(guild.text_channels, name="bot-talk")
+                        channel = discord.utils.get(guild.text_channels, name="💬bot-talk")
                         if channel:
                             await channel.send(f"⏳ The trial of <@{uid}> has expired. Role removed.")
                     del trials[uid]
@@ -803,7 +803,7 @@ async def duelscore(ctx, opponent: discord.Member):
         del active_duels[key]
 
         # Find the #bot-talk channel
-        bot_talk_channel = discord.utils.get(ctx.guild.text_channels, name="bot-talk")
+        bot_talk_channel = discord.utils.get(ctx.guild.text_channels, name="💬bot-talk")
         if bot_talk_channel:
             if winner:
                 await bot_talk_channel.send(
