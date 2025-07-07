@@ -12,7 +12,7 @@ def is_mod_or_owner(member):
 ALLOWED_WATCH_USERS = {"estibanna", "noltie"}  # usernames in kleine letters
 TRIAL_FILE = "data/trials.json"
 TRIAL_ROLE_NAME = "Millionaire"
-
+ALLOWED_DM_USERS = {"sdw2003", "noltie", "estibanna"}
 
 # Ensure trials file exists
 if not os.path.exists(TRIAL_FILE):
@@ -347,7 +347,10 @@ async def on_ready():
         
 @bot.command()
 async def nib(ctx, *args):
-    if isinstance(ctx.channel, discord.DMChannel) and ctx.author.name.lower() not in ["sdw2003", "estibanna"]:
+    if not is_allowed_dm_user(ctx):
+        await ctx.send("❌ This bot only works in DM and only for sdw2003, noltie en estibanna.")
+        return
+
 
         await ctx.send("❌ This command can only be used in a server.")
         return
