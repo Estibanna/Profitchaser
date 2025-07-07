@@ -356,10 +356,7 @@ async def nib(ctx, *args):
         return
 
 
-        await ctx.send("❌ This command can only be used in a server.")
-        return
-    await record_buy(ctx, args)
-
+     
 
 @bot.command()
 async def nib(ctx, *args):
