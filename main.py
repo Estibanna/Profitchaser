@@ -14,6 +14,10 @@ TRIAL_FILE = "data/trials.json"
 TRIAL_ROLE_NAME = "Millionaire"
 ALLOWED_DM_USERS = {"sdw2003", "noltie", "estibanna"}
 
+def is_allowed_dm_user(ctx):
+    return isinstance(ctx.channel, discord.DMChannel) and ctx.author.name.lower() in ALLOWED_DM_USERS
+
+
 # Ensure trials file exists
 if not os.path.exists(TRIAL_FILE):
     with open(TRIAL_FILE, "w") as f:
@@ -358,11 +362,9 @@ async def nib(ctx, *args):
 
 
 @bot.command()
-async def inb(ctx, *args):
-    if isinstance(ctx.channel, discord.DMChannel) and ctx.author.name.lower() not in ["sdw2003", "estibanna"]:
-
-        await ctx.send("❌ This command can only be used in a server.")
-        return
+async def nib(ctx, *args):
+    if not is_allowed_dm_user(ctx):
+        return  # ⛔ Bot negeert alles buiten DM of van onbekende gebruikers
     await record_buy(ctx, args)
 
 @bot.command()
