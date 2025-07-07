@@ -12,6 +12,12 @@ def is_mod_or_owner(member):
 ALLOWED_WATCH_USERS = {"estibanna", "noltie"}  # usernames in kleine letters
 TRIAL_FILE = "data/trials.json"
 TRIAL_ROLE_NAME = "Millionaire"
+
+ALLOWED_GUILD_ID = 696926502171836506
+
+def is_allowed_guild(ctx):
+    return ctx.guild and ctx.guild.id == ALLOWED_GUILD_ID
+    
 ALLOWED_DM_USERS = {"sdw2003", "noltie", "estibanna"}
 
 def is_allowed_dm_user(ctx):
@@ -351,17 +357,18 @@ async def on_ready():
         
      
 
+
 @bot.command()
 async def nib(ctx, *args):
-    if not is_allowed_dm_user(ctx):
-        return  # ⛔ Bot negeert alles buiten DM of van onbekende gebruikers
+    if not is_allowed_guild(ctx):
+        return 
     await record_buy(ctx, args)
 
 @bot.command()
 async def nis(ctx, *args):
-    if isinstance(ctx.channel, discord.DMChannel) and ctx.author.name.lower() not in ["sdw2003", "estibanna"]:
+    if not is_allowed_guild(ctx):
 
-        await ctx.send("❌ This command can only be used in a server.")
+    
         return
     await record_sell(ctx, args)
 
@@ -461,10 +468,10 @@ async def ranks(ctx):
 
 @bot.command()
 async def top(ctx, scope=None):
-    if isinstance(ctx.channel, discord.DMChannel):
-        await ctx.send("❌ This command can only be used in a server.")
-        return
+    if not is_allowed_guild(ctx):
+        return 
 
+    
     now = datetime.now(timezone.utc)
     if scope == "all":
         c.execute("SELECT user_id, SUM(profit) FROM profits GROUP BY user_id ORDER BY SUM(profit) DESC")
