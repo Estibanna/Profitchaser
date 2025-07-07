@@ -349,13 +349,6 @@ async def on_ready():
     if not check_trial_expiry.is_running():
         check_trial_expiry.start()
         
-@bot.command()
-async def nib(ctx, *args):
-    if not is_allowed_dm_user(ctx):
-        await ctx.send("❌ error")
-        return
-
-
      
 
 @bot.command()
