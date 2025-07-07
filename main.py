@@ -4,7 +4,7 @@ import json
 import discord
 from discord.ext import commands
 import sqlite3
-import o
+import os
 from datetime import datetime, timezone, timedelta
 def is_mod_or_owner(member):
     role_names = [role.name.lower() for role in member.roles]
@@ -348,7 +348,7 @@ async def on_ready():
 @bot.command()
 async def nib(ctx, *args):
     if not is_allowed_dm_user(ctx):
-        await ctx.send("❌ This bot only works in DM and only for sdw2003, noltie en estibanna.")
+        await ctx.send("❌ error")
         return
 
 
