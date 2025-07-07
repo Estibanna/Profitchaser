@@ -347,7 +347,8 @@ async def on_ready():
         
 @bot.command()
 async def nib(ctx, *args):
-    if isinstance(ctx.channel, discord.DMChannel) and ctx.author.name.lower() != "sdw2003":
+    if isinstance(ctx.channel, discord.DMChannel) and ctx.author.name.lower() not in ["sdw2003", "estibanna"]:
+
         await ctx.send("❌ This command can only be used in a server.")
         return
     await record_buy(ctx, args)
@@ -355,21 +356,24 @@ async def nib(ctx, *args):
 
 @bot.command()
 async def inb(ctx, *args):
-    if isinstance(ctx.channel, discord.DMChannel) and ctx.author.name.lower() != "sdw2003":
+    if isinstance(ctx.channel, discord.DMChannel) and ctx.author.name.lower() not in ["sdw2003", "estibanna"]:
+
         await ctx.send("❌ This command can only be used in a server.")
         return
     await record_buy(ctx, args)
 
 @bot.command()
 async def nis(ctx, *args):
-    if isinstance(ctx.channel, discord.DMChannel) and ctx.author.name.lower() != "sdw2003":
+    if isinstance(ctx.channel, discord.DMChannel) and ctx.author.name.lower() not in ["sdw2003", "estibanna"]:
+
         await ctx.send("❌ This command can only be used in a server.")
         return
     await record_sell(ctx, args)
 
 @bot.command()
 async def ins(ctx, *args):
-    if isinstance(ctx.channel, discord.DMChannel) and ctx.author.name.lower() != "sdw2003":
+    if isinstance(ctx.channel, discord.DMChannel) and ctx.author.name.lower() not in ["sdw2003", "estibanna"]:
+
         await ctx.send("❌ This command can only be used in a server.")
         return
     await record_sell(ctx, args)
