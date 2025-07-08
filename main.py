@@ -1084,16 +1084,26 @@ async def modundo(ctx, member: discord.Member, *, item: str):
 @bot.command()
 async def invested(ctx):
     c.execute("""
-        SELECT SUM(price * qty) 
+        SELECT item, SUM(qty), SUM(price * qty) 
         FROM flips 
         WHERE user_id = ? AND type = 'buy'
+        GROUP BY item
     """, (ctx.author.id,))
-    total_invested = c.fetchone()[0]
+    rows = c.fetchall()
 
-    if total_invested:
-        await ctx.send(f"💰 Your current investment (unsold items): **{int(total_invested):,} gp**")
-    else:
+    if not rows:
         await ctx.send("📭 You currently have no active investments.")
+        return
+
+    total = 0
+    msg = "**💼 Your current investments:**\n"
+    for item, qty, subtotal in rows:
+        total += subtotal
+        msg += f"• {item} — {int(qty)}x → {int(subtotal):,} gp\n"
+
+    msg += f"\n💰 **Total invested:** {int(total):,} gp"
+    await ctx.send(msg)
+
 
     
 bot.run(TOKEN)
