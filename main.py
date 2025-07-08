@@ -243,7 +243,7 @@ async def end(ctx):
     invested = c.fetchone()[0] or 0
 
     # Berekening
-    total_value = start + profit + drops - costs - invested
+    total_value = start + profit + drops - costs + invested
 
     msg = (
         f"📊 **Eindoverzicht:**\n"
