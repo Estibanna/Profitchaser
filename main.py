@@ -1080,6 +1080,20 @@ async def modundo(ctx, member: discord.Member, *, item: str):
 
     conn.commit()
     await ctx.send(f"↩️ Last `{item}` flip from {member.display_name} has been undone.")
+    
+@bot.command()
+async def invested(ctx):
+    c.execute("""
+        SELECT SUM(price * qty) 
+        FROM flips 
+        WHERE user_id = ? AND type = 'buy'
+    """, (ctx.author.id,))
+    total_invested = c.fetchone()[0]
+
+    if total_invested:
+        await ctx.send(f"💰 Your current investment (unsold items): **{int(total_invested):,} gp**")
+    else:
+        await ctx.send("📭 You currently have no active investments.")
 
     
 bot.run(TOKEN)
