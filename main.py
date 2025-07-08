@@ -9,7 +9,7 @@ from datetime import datetime, timezone, timedelta
 def is_mod_or_owner(member):
     role_names = [role.name.lower() for role in member.roles]
     return "mods" in role_names or "owners" in role_names
-ALLOWED_WATCH_USERS = {"estibanna"}  # usernames in kleine letters
+ALLOWED_WATCH_USERS = {"estibanna", "noltie"}  # usernames in kleine letters
 TRIAL_FILE = "data/trials.json"
 TRIAL_ROLE_NAME = "Millionaire"
 
@@ -18,7 +18,7 @@ ALLOWED_GUILD_ID = 696926502171836506
 def is_allowed_guild(ctx):
     return ctx.guild and ctx.guild.id == ALLOWED_GUILD_ID
     
-ALLOWED_DM_USERS = {"sdw2003", "noltie", "estibanna"}
+ALLOWED_DM_USERS = {"sdw2003", "estibanna"}
 
 def is_allowed_dm_user(ctx):
     return isinstance(ctx.channel, discord.DMChannel) and ctx.author.name.lower() in ALLOWED_DM_USERS
