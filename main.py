@@ -545,6 +545,11 @@ def format_price(value):
     else:
         return f"{int(value)}gp"    
 
+def is_allowed_user(ctx):
+    return (
+        (ctx.guild and is_allowed_guild(ctx)) or
+        (isinstance(ctx.channel, discord.DMChannel) and ctx.author.name.lower() == "estibanna")
+    )
 
 
 
@@ -602,6 +607,8 @@ async def rank(ctx, scope=None):
     label = "all-time" if scope == "all" else "this month"
     await ctx.send(f"🏷️ Your current rank ({label}): **{rank}**\n💰 Profit: {total:,} gp")
 
+
+
 @bot.command()
 async def ranks(ctx):
     msg = "**📊 Flipper Ranks:**\n"
@@ -617,11 +624,6 @@ async def ranks(ctx):
     msg += "• Noob – 0+"
     await ctx.send(msg)
 
-def is_allowed_user(ctx):
-    return (
-        (ctx.guild and is_allowed_guild(ctx)) or
-        (isinstance(ctx.channel, discord.DMChannel) and ctx.author.name.lower() == "estibanna")
-    )
 
     
     now = datetime.now(timezone.utc)
