@@ -170,9 +170,9 @@ async def start(ctx, amount: str):
         c.execute("INSERT OR REPLACE INTO finances (user_id, start_balance) VALUES (?, ?)",
                   (ctx.author.id, value))
         conn.commit()
-        await ctx.send(f"🏁 Startbedrag ingesteld op **{int(value):,} gp**.")
+        await ctx.send(f"🏁 Startamount set to **{int(value):,} gp**.")
     except:
-        await ctx.send("❌ Gebruik: `!start 10m` of `!start 250000000`")
+        await ctx.send("❌ Use: `!start 10m` of `!start 250000000GP`")
 
 
 @bot.command()
@@ -180,7 +180,7 @@ async def saldo(ctx):
     c.execute("SELECT start_balance FROM finances WHERE user_id=?", (ctx.author.id,))
     row = c.fetchone()
     if not row:
-        await ctx.send("⚠️ Je hebt nog geen startbedrag ingesteld. Gebruik `!start`.")
+        await ctx.send("⚠️ You have not set a start amount yet, use `!start`.")
         return
 
     start = row[0]
@@ -188,41 +188,41 @@ async def saldo(ctx):
     invested = c.fetchone()[0] or 0
 
     saldo = start - invested
-    await ctx.send(f"💼 Start: {int(start):,} gp\n💸 Investering: {int(invested):,} gp\n🧮 Resterend saldo: **{int(saldo):,} gp**")
+    await ctx.send(f"💼 Start: {int(start):,} gp\n💸 Invested: {int(invested):,} gp\n🧮 Remaining saldo: **{int(saldo):,} gp**")
 
 @bot.command()
 async def cost(ctx, *args):
     if len(args) < 2:
-        await ctx.send("❌ Gebruik: `!cost item bedrag`")
+        await ctx.send("❌ Use: `!cost item amount`")
         return
     try:
         amount = parse_price(args[-1])
         item = " ".join(args[:-1]).lower()
         c.execute("INSERT INTO costs (user_id, item, amount) VALUES (?, ?, ?)", (ctx.author.id, item, amount))
         conn.commit()
-        await ctx.send(f"💸 Cost toegevoegd: {item} — {int(amount):,} gp")
+        await ctx.send(f"💸 Cost added: {item} — {int(amount):,} gp")
     except:
-        await ctx.send("❌ Ongeldige invoer. Gebruik: `!cost item 10m`")
+        await ctx.send("❌ Invalid input. Use: `!cost item 10m`")
 
 @bot.command()
 async def drop(ctx, *args):
     if len(args) < 2:
-        await ctx.send("❌ Gebruik: `!drop item bedrag`")
+        await ctx.send("❌ Use: `!drop item amount`")
         return
     try:
         amount = parse_price(args[-1])
         item = " ".join(args[:-1]).lower()
         c.execute("INSERT INTO drops (user_id, item, amount) VALUES (?, ?, ?)", (ctx.author.id, item, amount))
         conn.commit()
-        await ctx.send(f"📦 Drop toegevoegd: {item} — {int(amount):,} gp")
+        await ctx.send(f"📦 Drop added: {item} — {int(amount):,} gp")
     except:
-        await ctx.send("❌ Ongeldige invoer. Gebruik: `!drop item 10m`")
+        await ctx.send("❌ Invalid input. Use: `!drop item 10m`")
 @bot.command()
 async def end(ctx):
     c.execute("SELECT start_balance FROM finances WHERE user_id=?", (ctx.author.id,))
     row = c.fetchone()
     if not row:
-        await ctx.send("⚠️ Je hebt nog geen startbedrag ingesteld. Gebruik `!start`.")
+        await ctx.send("⚠️ You have not set a start amount yet, use `!start`.")
         return
     start = row[0]
 
@@ -248,12 +248,12 @@ async def end(ctx):
     msg = (
         f"📊 **Eindoverzicht:**\n"
         f"Start: {int(start):,} gp\n"
-        f"+ Winst: {int(profit):,} gp\n"
-        f"- Kosten: {int(costs):,} gp\n"
+        f"+ Profit: {int(profit):,} gp\n"
+        f"- Costs: {int(costs):,} gp\n"
         f"+ Drops: {int(drops):,} gp\n"
-        f"- Huidige investering: {int(invested):,} gp\n"
+        f"- Total investment atm: {int(invested):,} gp\n"
         f"----------------------------------\n"
-        f"💰 **Totale waarde:** {int(total_value):,} gp"
+        f"💰 **Total wealth:** {int(total_value):,} gp"
     )
     await ctx.send(msg)
 
