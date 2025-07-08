@@ -222,7 +222,7 @@ async def end(ctx):
     c.execute("SELECT start_balance FROM finances WHERE user_id=?", (ctx.author.id,))
     row = c.fetchone()
     if not row:
-        await ctx.send("⚠️ You have not set a start amount yet, use `!start`.")
+        await ctx.send("⚠️ Je hebt nog geen startbedrag ingesteld. Gebruik `!start`.")
         return
     start = row[0]
 
@@ -238,24 +238,27 @@ async def end(ctx):
     c.execute("SELECT SUM(amount) FROM drops WHERE user_id=?", (ctx.author.id,))
     drops = c.fetchone()[0] or 0
 
-    # Investering (nog niet verkocht)
+    # Investering
     c.execute("SELECT SUM(price * qty) FROM flips WHERE user_id=? AND type='buy'", (ctx.author.id,))
     invested = c.fetchone()[0] or 0
 
-    # Berekening
-    total_value = start + profit + drops - costs + invested
+    # Berekeningen
+    liquid = start + profit + drops - costs
+    total = liquid + invested
 
     msg = (
-        f"📊 **Eindoverzicht:**\n"
+        f"📘 **Eindoverzicht:**\n"
         f"Start: {int(start):,} gp\n"
         f"+ Profit: {int(profit):,} gp\n"
         f"- Costs: {int(costs):,} gp\n"
         f"+ Drops: {int(drops):,} gp\n"
-        f"- Total investment atm: {int(invested):,} gp\n"
+        f"+ Total investment atm: {int(invested):,} gp\n"
         f"----------------------------------\n"
-        f"💰 **Total wealth:** {int(total_value):,} gp"
+        f"💼 Liquid wealth: {int(liquid):,} gp\n"
+        f"📦 Total wealth (incl. stock): {int(total):,} gp"
     )
     await ctx.send(msg)
+
 
 
 
