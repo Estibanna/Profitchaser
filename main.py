@@ -243,7 +243,7 @@ async def end(ctx):
     invested = c.fetchone()[0] or 0
 
     # Berekeningen
-    liquid = start + profit + drops - costs
+    liquid = start + profit + drops - costs - invested
     total = liquid + invested
 
     msg = (
