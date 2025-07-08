@@ -247,7 +247,7 @@ async def end(ctx):
     total = liquid + invested
 
     msg = (
-        f"📘 **Eindoverzicht:**\n"
+        f"📘 **General Overview:**\n"
         f"Start: {int(start):,} gp\n"
         f"+ Profit: {int(profit):,} gp\n"
         f"- Costs: {int(costs):,} gp\n"
