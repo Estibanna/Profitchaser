@@ -105,7 +105,34 @@ CREATE TABLE IF NOT EXISTS sell_details (
 )
 """)
 
+
+
+
+
+
+c.execute("""
+CREATE TABLE IF NOT EXISTS finances (
+    user_id INTEGER PRIMARY KEY,
+    start_balance REAL DEFAULT 0
+)
+""")
+c.execute("""
+CREATE TABLE IF NOT EXISTS costs (
+    user_id INTEGER,
+    item TEXT,
+    amount REAL
+)
+""")
+c.execute("""
+CREATE TABLE IF NOT EXISTS drops (
+    user_id INTEGER,
+    item TEXT,
+    amount REAL
+)
+""")
 conn.commit()
+
+
 
 
 try:
@@ -117,6 +144,125 @@ except sqlite3.OperationalError:
 
 
 conn.commit()
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+@bot.command()
+async def start(ctx, amount: str):
+    try:
+        value = parse_price(amount)
+        c.execute("INSERT OR REPLACE INTO finances (user_id, start_balance) VALUES (?, ?)",
+                  (ctx.author.id, value))
+        conn.commit()
+        await ctx.send(f"🏁 Startbedrag ingesteld op **{int(value):,} gp**.")
+    except:
+        await ctx.send("❌ Gebruik: `!start 10m` of `!start 250000000`")
+
+
+@bot.command()
+async def saldo(ctx):
+    c.execute("SELECT start_balance FROM finances WHERE user_id=?", (ctx.author.id,))
+    row = c.fetchone()
+    if not row:
+        await ctx.send("⚠️ Je hebt nog geen startbedrag ingesteld. Gebruik `!start`.")
+        return
+
+    start = row[0]
+    c.execute("SELECT SUM(price * qty) FROM flips WHERE user_id=? AND type='buy'", (ctx.author.id,))
+    invested = c.fetchone()[0] or 0
+
+    saldo = start - invested
+    await ctx.send(f"💼 Start: {int(start):,} gp\n💸 Investering: {int(invested):,} gp\n🧮 Resterend saldo: **{int(saldo):,} gp**")
+
+@bot.command()
+async def cost(ctx, *args):
+    if len(args) < 2:
+        await ctx.send("❌ Gebruik: `!cost item bedrag`")
+        return
+    try:
+        amount = parse_price(args[-1])
+        item = " ".join(args[:-1]).lower()
+        c.execute("INSERT INTO costs (user_id, item, amount) VALUES (?, ?, ?)", (ctx.author.id, item, amount))
+        conn.commit()
+        await ctx.send(f"💸 Cost toegevoegd: {item} — {int(amount):,} gp")
+    except:
+        await ctx.send("❌ Ongeldige invoer. Gebruik: `!cost item 10m`")
+
+@bot.command()
+async def drop(ctx, *args):
+    if len(args) < 2:
+        await ctx.send("❌ Gebruik: `!drop item bedrag`")
+        return
+    try:
+        amount = parse_price(args[-1])
+        item = " ".join(args[:-1]).lower()
+        c.execute("INSERT INTO drops (user_id, item, amount) VALUES (?, ?, ?)", (ctx.author.id, item, amount))
+        conn.commit()
+        await ctx.send(f"📦 Drop toegevoegd: {item} — {int(amount):,} gp")
+    except:
+        await ctx.send("❌ Ongeldige invoer. Gebruik: `!drop item 10m`")
+@bot.command()
+async def end(ctx):
+    c.execute("SELECT start_balance FROM finances WHERE user_id=?", (ctx.author.id,))
+    row = c.fetchone()
+    if not row:
+        await ctx.send("⚠️ Je hebt nog geen startbedrag ingesteld. Gebruik `!start`.")
+        return
+    start = row[0]
+
+    # Winst
+    c.execute("SELECT SUM(profit) FROM profits WHERE user_id=?", (ctx.author.id,))
+    profit = c.fetchone()[0] or 0
+
+    # Kosten
+    c.execute("SELECT SUM(amount) FROM costs WHERE user_id=?", (ctx.author.id,))
+    costs = c.fetchone()[0] or 0
+
+    # Drops
+    c.execute("SELECT SUM(amount) FROM drops WHERE user_id=?", (ctx.author.id,))
+    drops = c.fetchone()[0] or 0
+
+    # Investering (nog niet verkocht)
+    c.execute("SELECT SUM(price * qty) FROM flips WHERE user_id=? AND type='buy'", (ctx.author.id,))
+    invested = c.fetchone()[0] or 0
+
+    # Berekening
+    total_value = start + profit + drops - costs - invested
+
+    msg = (
+        f"📊 **Eindoverzicht:**\n"
+        f"Start: {int(start):,} gp\n"
+        f"+ Winst: {int(profit):,} gp\n"
+        f"- Kosten: {int(costs):,} gp\n"
+        f"+ Drops: {int(drops):,} gp\n"
+        f"- Huidige investering: {int(invested):,} gp\n"
+        f"----------------------------------\n"
+        f"💰 **Totale waarde:** {int(total_value):,} gp"
+    )
+    await ctx.send(msg)
+
+
+
+
+
+
+
 
 
 
