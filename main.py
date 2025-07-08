@@ -509,24 +509,26 @@ async def on_ready():
 
 @bot.command()
 async def nib(ctx, *args):
-    if not is_allowed_guild(ctx):
+    if not is_allowed_user(ctx):
+        return 
+    await record_buy(ctx, args)
+
+@bot.command()
+async def inb(ctx, *args):
+    if not is_allowed_user(ctx):
         return 
     await record_buy(ctx, args)
 
 @bot.command()
 async def nis(ctx, *args):
-    if not is_allowed_guild(ctx):
-
-    
-        return
+    if not is_allowed_user(ctx):
+        return 
     await record_sell(ctx, args)
 
 @bot.command()
 async def ins(ctx, *args):
-    if isinstance(ctx.channel, discord.DMChannel) and ctx.author.name.lower() not in ["sdw2003", "estibanna"]:
-
-        await ctx.send("❌ This command can only be used in a server.")
-        return
+    if not is_allowed_user(ctx):
+        return 
     await record_sell(ctx, args)
 
 
@@ -615,10 +617,11 @@ async def ranks(ctx):
     msg += "• Noob – 0+"
     await ctx.send(msg)
 
-@bot.command()
-async def top(ctx, scope=None):
-    if not is_allowed_guild(ctx):
-        return 
+def is_allowed_user(ctx):
+    return (
+        (ctx.guild and is_allowed_guild(ctx)) or
+        (isinstance(ctx.channel, discord.DMChannel) and ctx.author.name.lower() == "estibanna")
+    )
 
     
     now = datetime.now(timezone.utc)
