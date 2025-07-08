@@ -1258,6 +1258,52 @@ async def invested(ctx):
     msg += f"\n💰 **Total invested:** {int(total):,} gp"
     await ctx.send(msg)
 
+@bot.command()
+async def costs(ctx):
+    c.execute("""
+        SELECT item, SUM(amount)
+        FROM costs
+        WHERE user_id = ?
+        GROUP BY item
+        ORDER BY SUM(amount) DESC
+    """, (ctx.author.id,))
+    rows = c.fetchall()
+
+    if not rows:
+        await ctx.send("📭 You have no recorded costs.")
+        return
+
+    msg = "**💸 Your costs:**\n"
+    total = 0
+    for item, amount in rows:
+        total += amount
+        msg += f"• {item.title()}: {int(amount):,} gp\n"
+
+    msg += f"\n**Total costs:** {int(total):,} gp"
+    await ctx.send(msg)
+@bot.command()
+async def drops(ctx):
+    c.execute("""
+        SELECT item, SUM(amount)
+        FROM drops
+        WHERE user_id = ?
+        GROUP BY item
+        ORDER BY SUM(amount) DESC
+    """, (ctx.author.id,))
+    rows = c.fetchall()
+
+    if not rows:
+        await ctx.send("📭 You have no recorded drops.")
+        return
+
+    msg = "**📦 Your drops:**\n"
+    total = 0
+    for item, amount in rows:
+        total += amount
+        msg += f"• {item.title()}: {int(amount):,} gp\n"
+
+    msg += f"\n**Total drops:** {int(total):,} gp"
+    await ctx.send(msg)
 
     
 bot.run(TOKEN)
