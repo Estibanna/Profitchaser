@@ -442,8 +442,7 @@ async def on_ready():
     print(f"✅ Logged in as {bot.user}")
     global active_duels
     active_duels = load_duels()
-    if not check_trial_expiry.is_running():
-        check_trial_expiry.start()
+    
         
      
 
