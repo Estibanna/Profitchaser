@@ -263,6 +263,25 @@ async def end(ctx):
 
 
 
+@bot.command()
+@commands.is_owner()
+async def clear_all_data(ctx):
+    c.execute("DELETE FROM flips")
+    c.execute("DELETE FROM profits")
+    c.execute("DELETE FROM sell_details")
+    c.execute("DELETE FROM costs")
+    c.execute("DELETE FROM drops")
+    c.execute("DELETE FROM finances")
+    c.execute("DELETE FROM watchlist")
+    conn.commit()
+
+    # Wis .json-bestanden
+    with open("data/trials.json", "w") as f:
+        json.dump({}, f)
+    with open("data/duels.json", "w") as f:
+        json.dump({}, f)
+
+    await ctx.send("🧹 All data has been wiped.")
 
 
 
