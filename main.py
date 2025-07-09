@@ -400,8 +400,10 @@ async def record_sell(ctx, args):
             await ctx.send("⚠️ Not enough stock to sell.")
 
     except Exception as e:
-        await ctx.send("❌ Invalid input for sell. Use `!nis <item> <price> [x<qty>]`")
-        print("[SELL ERROR]", e)
+        print("[UNEXPECTED SELL ERROR]", e)
+
+
+
 def get_flipper_rank(total_profit):
     if total_profit >= 1_000_000_000_000:
         return "🪙 Flipping Titan"
