@@ -594,38 +594,6 @@ async def ranks(ctx):
 
     await ctx.send(msg if count > 0 else "⚠️ No flips found.")
 
-@bot.command()
-async def topmod(ctx, scope=None):
-    if isinstance(ctx.channel, discord.DMChannel):
-        await ctx.send("❌ This command can only be used in a server.")
-        return
-
-    now = datetime.now(timezone.utc)
-    if scope == "all":
-        c.execute("SELECT user_id, SUM(profit) FROM profits GROUP BY user_id ORDER BY SUM(profit) DESC")
-        title = "**👑 Top Mod Flippers of all time:**\n"
-    else:
-        c.execute("SELECT user_id, SUM(profit) FROM profits WHERE month=? GROUP BY user_id ORDER BY SUM(profit) DESC",
-                  (now.strftime("%Y-%m"),))
-        title = "**👑 Top Mod Flippers this month:**\n"
-
-    rows = c.fetchall()
-    msg = title
-    count = 0
-
-    for uid, total in rows:
-        member = ctx.guild.get_member(uid)
-        if member and is_mod_or_owner(member):
-            user = await bot.fetch_user(uid)
-            display_name = member.display_name if member else user.name
-            count += 1
-            msg += f"{count}. {display_name}: {int(total):,} gp\n"
-        if count == 10:
-            break
-
-    await ctx.send(msg if count > 0 else "⚠️ No mod/owner flips found.") 
-
-
 
 @bot.command()
 async def removewin(ctx):
@@ -1081,15 +1049,7 @@ async def bestitem(ctx):
     else:
         await ctx.send("❌ You have no flip data yet.")
 
-@bot.command()
-async def rolls(ctx):
-    member = ctx.guild.get_member(ctx.author.id)
-    if not member:
-        await ctx.send("❌ Bot kon je member-info niet ophalen (get_member is None).")
-        return
 
-    rollen = [f"{role.name} ({role.id})" for role in member.roles]
-    await ctx.send("🧾 Jouw rollen:\n" + "\n".join(rollen))
 
 
 @bot.command()
