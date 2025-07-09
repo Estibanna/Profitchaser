@@ -162,7 +162,7 @@ async def start(ctx, amount: str):
 
 
 @bot.command()
-async def Saldo(ctx):
+async def saldo(ctx):
     c.execute("SELECT COALESCE(start_balance, 0) FROM finances WHERE user_id=?", (ctx.author.id,))
     row = c.fetchone()
     start = row[0] if row else 0
