@@ -446,31 +446,35 @@ async def on_ready():
      
 
 
+def is_allowed_user(ctx):
+    return (
+        ctx.guild or
+        (isinstance(ctx.channel, discord.DMChannel) and ctx.author.name.lower() in ALLOWED_DM_USERS)
+    )
+
 @bot.command()
 async def nib(ctx, *args):
     if not is_allowed_user(ctx):
-        return 
+        return
     await record_buy(ctx, args)
 
 @bot.command()
 async def inb(ctx, *args):
     if not is_allowed_user(ctx):
-        return 
+        return
     await record_buy(ctx, args)
 
 @bot.command()
 async def nis(ctx, *args):
     if not is_allowed_user(ctx):
-        return 
+        return
     await record_sell(ctx, args)
 
 @bot.command()
 async def ins(ctx, *args):
     if not is_allowed_user(ctx):
-        return 
+        return
     await record_sell(ctx, args)
-
-
 
 
 
