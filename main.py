@@ -163,13 +163,9 @@ async def start(ctx, amount: str):
 
 @bot.command()
 async def saldo(ctx):
-    c.execute("SELECT start_balance FROM finances WHERE user_id=?", (ctx.author.id,))
+    c.execute("SELECT COALESCE(start_balance, 0) FROM finances WHERE user_id=?", (ctx.author.id,))
     row = c.fetchone()
-    if not row:
-        await ctx.send("⚠️ You have not set a start amount yet, use `!start amount`.")
-        return
-
-    start = row[0]
+    start = row[0] if row else 0
 
     # Haal winst, kosten en investering op
     c.execute("SELECT SUM(profit) FROM profits WHERE user_id=?", (ctx.author.id,))
@@ -181,14 +177,16 @@ async def saldo(ctx):
     c.execute("SELECT SUM(price * qty) FROM flips WHERE user_id=? AND type='buy'", (ctx.author.id,))
     invested = c.fetchone()[0] or 0
 
-    saldo = start + profit - costs - invested
+    saldo = start + profit + drops - costs - invested
+    total = liquid + invested
 
     await ctx.send(
         f"💼 Start: {int(start):,} gp\n"
         f"📈 Profit: {int(profit):,} gp\n"
         f"💸 Costs: {int(costs):,} gp\n"
         f"📦 Invested: {int(invested):,} gp\n"
-        f"🧮 Remaining saldo: **{int(saldo):,} gp**"
+        f"🧮 Remaining cash: **{int(saldo):,} gp**"
+        f"💰 Total Wealth: **{int(total):,} gp**"
     )
 
 
@@ -221,12 +219,9 @@ async def drop(ctx, *args):
         await ctx.send("❌ Invalid input. Use: `!drop item 10m`")
 @bot.command()
 async def end(ctx):
-    c.execute("SELECT start_balance FROM finances WHERE user_id=?", (ctx.author.id,))
+    c.execute("SELECT COALESCE(start_balance, 0) FROM finances WHERE user_id=?", (ctx.author.id,))
     row = c.fetchone()
-    if not row:
-        await ctx.send("⚠️ You have not set a start amount yet, use `!start amount`.")
-        return
-    start = row[0]
+    start = row[0] if row else 0
 
     # Winst
     c.execute("SELECT SUM(profit) FROM profits WHERE user_id=?", (ctx.author.id,))
