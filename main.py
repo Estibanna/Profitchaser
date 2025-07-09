@@ -162,33 +162,35 @@ async def start(ctx, amount: str):
 
 
 @bot.command()
-async def saldo(ctx):
+async def Saldo(ctx):
     c.execute("SELECT COALESCE(start_balance, 0) FROM finances WHERE user_id=?", (ctx.author.id,))
     row = c.fetchone()
     start = row[0] if row else 0
 
-    # Haal winst, kosten en investering op
     c.execute("SELECT SUM(profit) FROM profits WHERE user_id=?", (ctx.author.id,))
     profit = c.fetchone()[0] or 0
 
     c.execute("SELECT SUM(amount) FROM costs WHERE user_id=?", (ctx.author.id,))
     costs = c.fetchone()[0] or 0
 
+    c.execute("SELECT SUM(amount) FROM drops WHERE user_id=?", (ctx.author.id,))
+    drops = c.fetchone()[0] or 0
+
     c.execute("SELECT SUM(price * qty) FROM flips WHERE user_id=? AND type='buy'", (ctx.author.id,))
     invested = c.fetchone()[0] or 0
 
     saldo = start + profit + drops - costs - invested
-    total = liquid + invested
+    total = saldo + invested
 
     await ctx.send(
         f"💼 Start: {int(start):,} gp\n"
         f"📈 Profit: {int(profit):,} gp\n"
+        f"📦 Drops: {int(drops):,} gp\n"
         f"💸 Costs: {int(costs):,} gp\n"
-        f"📦 Invested: {int(invested):,} gp\n"
-        f"🧮 Remaining cash: **{int(saldo):,} gp**"
-        f"💰 Total Wealth: **{int(total):,} gp**"
+        f"📥 Invested: {int(invested):,} gp\n"
+        f"🧮 Liquid wealth: **{int(saldo):,} gp**\n"
+        f"💰 Total wealth: **{int(total):,} gp**"
     )
-
 
 @bot.command()
 async def cost(ctx, *args):
@@ -217,44 +219,6 @@ async def drop(ctx, *args):
         await ctx.send(f"📦 Drop added: {item} — {int(amount):,} gp")
     except:
         await ctx.send("❌ Invalid input. Use: `!drop item 10m`")
-@bot.command()
-async def end(ctx):
-    c.execute("SELECT COALESCE(start_balance, 0) FROM finances WHERE user_id=?", (ctx.author.id,))
-    row = c.fetchone()
-    start = row[0] if row else 0
-
-    # Winst
-    c.execute("SELECT SUM(profit) FROM profits WHERE user_id=?", (ctx.author.id,))
-    profit = c.fetchone()[0] or 0
-
-    # Kosten
-    c.execute("SELECT SUM(amount) FROM costs WHERE user_id=?", (ctx.author.id,))
-    costs = c.fetchone()[0] or 0
-
-    # Drops
-    c.execute("SELECT SUM(amount) FROM drops WHERE user_id=?", (ctx.author.id,))
-    drops = c.fetchone()[0] or 0
-
-    # Investering
-    c.execute("SELECT SUM(price * qty) FROM flips WHERE user_id=? AND type='buy'", (ctx.author.id,))
-    invested = c.fetchone()[0] or 0
-
-    # Berekeningen
-    liquid = start + profit + drops - costs - invested
-    total = liquid + invested
-
-    msg = (
-        f"📘 **General Overview:**\n"
-        f"Start: {int(start):,} gp\n"
-        f"+ Profit: {int(profit):,} gp\n"
-        f"- Costs: {int(costs):,} gp\n"
-        f"+ Drops: {int(drops):,} gp\n"
-        f"+ Total investment atm: {int(invested):,} gp\n"
-        f"----------------------------------\n"
-        f"💼 Liquid wealth: {int(liquid):,} gp\n"
-        f"📦 Total wealth (incl. stock): {int(total):,} gp"
-    )
-    await ctx.send(msg)
 
 
 
