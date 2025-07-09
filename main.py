@@ -797,18 +797,6 @@ async def flips(ctx):
 
 
 
-# Globale dict om track requests bij te houden
-user_track_requests = {}
-
-@bot.command()
-async def track(ctx, item: str, price: str):
-    try:
-        gp_price = parse_price(price)  # Zorg dat deze functie bestaat zoals elders in je code
-        user_track_requests.setdefault(ctx.author.id, []).append((item.lower(), gp_price))
-        await ctx.send(f"🔔 Tracking `{item}`. You'll get a DM if it drops below {price}.")
-    except Exception as e:
-        await ctx.send("❌ Usage: `!track [item] [price]`")
-        print(e)
 
 
 
