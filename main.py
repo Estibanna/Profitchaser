@@ -262,8 +262,7 @@ async def clear_all_data(ctx):
     conn.commit()
 
     # Wis .json-bestanden
-    with open("data/trials.json", "w") as f:
-        json.dump({}, f)
+
     with open("data/duels.json", "w") as f:
         json.dump({}, f)
 
