@@ -612,13 +612,36 @@ async def reset(ctx, scope=None):
         await ctx.send("🗑️ All your flip and profit history has been deleted.")
         return
 
-    # Laatste transactie ophalen (buy of sell)
-    c.execute("""
-        SELECT rowid, item, price, qty, type, timestamp
-        FROM flips
-        WHERE user_id=?
-        ORDER BY timestamp DESC LIMIT 1
-    """, (ctx.author.id,))
+    elif scope == "cost":
+        c.execute("""SELECT rowid, item, amount FROM costs 
+                     WHERE user_id=? ORDER BY rowid DESC LIMIT 1""", (ctx.author.id,))
+        last = c.fetchone()
+        if not last:
+            await ctx.send("⚠️ No cost to reset.")
+            return
+        rowid, item, amount = last
+        c.execute("DELETE FROM costs WHERE rowid=?", (rowid,))
+        conn.commit()
+        await ctx.send(f"↩️ Last cost for `{item}` ({int(amount):,} gp) has been removed.")
+        return
+
+    elif scope == "drop":
+        c.execute("""SELECT rowid, item, amount FROM drops 
+                     WHERE user_id=? ORDER BY rowid DESC LIMIT 1""", (ctx.author.id,))
+        last = c.fetchone()
+        if not last:
+            await ctx.send("⚠️ No drop to reset.")
+            return
+        rowid, item, amount = last
+        c.execute("DELETE FROM drops WHERE rowid=?", (rowid,))
+        conn.commit()
+        await ctx.send(f"↩️ Last drop for `{item}` ({int(amount):,} gp) has been removed.")
+        return
+
+    # Laatste flip reset
+    c.execute("""SELECT rowid, item, price, qty, type, timestamp
+                 FROM flips
+                 WHERE user_id=? ORDER BY timestamp DESC LIMIT 1""", (ctx.author.id,))
     last = c.fetchone()
 
     if not last:
@@ -643,23 +666,16 @@ async def reset(ctx, scope=None):
             await ctx.send("⚠️ Cannot undo sell – no matching sell details found.")
             return
 
-        # Verwijder de verkoop zelf + details
         c.execute("DELETE FROM flips WHERE rowid=?", (rowid,))
         c.execute("DELETE FROM sell_details WHERE sell_rowid=?", (rowid,))
 
-        # Zet de aankopen terug in voorraad
         for buy_price, q in used_buys:
-            c.execute("""
-                INSERT INTO flips (user_id, item, price, qty, type)
-                VALUES (?, ?, ?, ?, 'buy')
-            """, (ctx.author.id, item, buy_price, q))
+            c.execute("""INSERT INTO flips (user_id, item, price, qty, type)
+                         VALUES (?, ?, ?, ?, 'buy')""", (ctx.author.id, item, buy_price, q))
 
-        # Verwijder bijbehorende winstregel
-        c.execute("""
-            SELECT rowid FROM profits
-            WHERE user_id=? AND item=?
-            ORDER BY timestamp DESC LIMIT 1
-        """, (ctx.author.id, item))
+        # Winstregel verwijderen
+        c.execute("""SELECT rowid FROM profits
+                     WHERE user_id=? AND item=? ORDER BY timestamp DESC LIMIT 1""", (ctx.author.id, item))
         profit = c.fetchone()
         if profit:
             c.execute("DELETE FROM profits WHERE rowid=?", (profit[0],))
@@ -667,6 +683,7 @@ async def reset(ctx, scope=None):
         conn.commit()
         await ctx.send(f"↩️ Last sell of `{item}` has been undone and {qty}x returned to inventory.")
         return
+
 
 
 
