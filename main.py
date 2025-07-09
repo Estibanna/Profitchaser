@@ -166,7 +166,7 @@ async def saldo(ctx):
     c.execute("SELECT start_balance FROM finances WHERE user_id=?", (ctx.author.id,))
     row = c.fetchone()
     if not row:
-        await ctx.send("⚠️ You have not set a start amount yet, use `!start`.")
+        await ctx.send("⚠️ You have not set a start amount yet, use `!start amount`.")
         return
 
     start = row[0]
@@ -224,7 +224,7 @@ async def end(ctx):
     c.execute("SELECT start_balance FROM finances WHERE user_id=?", (ctx.author.id,))
     row = c.fetchone()
     if not row:
-        await ctx.send("⚠️ You have not set a start amount yet, use `!start`.")
+        await ctx.send("⚠️ You have not set a start amount yet, use `!start amount`.")
         return
     start = row[0]
 
@@ -586,6 +586,8 @@ async def ranks(ctx):
 
 
     
+@bot.command(name="top")
+async def top(ctx, scope=None):
     now = datetime.now(timezone.utc)
     if scope == "all":
         c.execute("SELECT user_id, SUM(profit) FROM profits GROUP BY user_id ORDER BY SUM(profit) DESC")
@@ -602,10 +604,13 @@ async def ranks(ctx):
     for uid, total in rows:
         member = ctx.guild.get_member(uid)
         if member and not is_mod_or_owner(member):
+            display_name = member.display_name
+        else:
             user = await bot.fetch_user(uid)
-            display_name = member.display_name if member else user.name
-            count += 1
-            msg += f"{count}. {display_name}: {int(total):,} gp\n"
+            display_name = user.name
+
+        count += 1
+        msg += f"{count}. {display_name}: {int(total):,} gp\n"
         if count == 10:
             break
 
