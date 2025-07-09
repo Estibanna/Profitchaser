@@ -10,7 +10,7 @@ def is_mod_or_owner(member):
     role_names = [role.name.lower() for role in member.roles]
     return "mods" in role_names or "owners" in role_names
 ALLOWED_WATCH_USERS = {"estibanna", "noltie"}  # usernames in kleine letters
-ALLOWED_GUILD_ID = 696926502171836506
+ALLOWED_GUILD_ID = 1334260436098355250
 
 def is_allowed_guild(ctx):
     return ctx.guild and ctx.guild.id == ALLOWED_GUILD_ID
@@ -170,11 +170,27 @@ async def saldo(ctx):
         return
 
     start = row[0]
+
+    # Haal winst, kosten en investering op
+    c.execute("SELECT SUM(profit) FROM profits WHERE user_id=?", (ctx.author.id,))
+    profit = c.fetchone()[0] or 0
+
+    c.execute("SELECT SUM(amount) FROM costs WHERE user_id=?", (ctx.author.id,))
+    costs = c.fetchone()[0] or 0
+
     c.execute("SELECT SUM(price * qty) FROM flips WHERE user_id=? AND type='buy'", (ctx.author.id,))
     invested = c.fetchone()[0] or 0
 
-    saldo = start - invested
-    await ctx.send(f"💼 Start: {int(start):,} gp\n💸 Invested: {int(invested):,} gp\n🧮 Remaining saldo: **{int(saldo):,} gp**")
+    saldo = start + profit - costs - invested
+
+    await ctx.send(
+        f"💼 Start: {int(start):,} gp\n"
+        f"📈 Profit: {int(profit):,} gp\n"
+        f"💸 Costs: {int(costs):,} gp\n"
+        f"📦 Invested: {int(invested):,} gp\n"
+        f"🧮 Remaining saldo: **{int(saldo):,} gp**"
+    )
+
 
 @bot.command()
 async def cost(ctx, *args):
@@ -208,7 +224,7 @@ async def end(ctx):
     c.execute("SELECT start_balance FROM finances WHERE user_id=?", (ctx.author.id,))
     row = c.fetchone()
     if not row:
-        await ctx.send("⚠️ Je hebt nog geen startbedrag ingesteld. Gebruik `!start`.")
+        await ctx.send("⚠️ You have not set a start amount yet, use `!start`.")
         return
     start = row[0]
 
