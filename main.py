@@ -326,10 +326,9 @@ async def record_buy(ctx, args):
 #sell_handle
 async def record_sell(ctx, args):
     try:
+        args = list(args)
         is_p2p = False
-        if args and args[-1].lower() == "p2p":
-            args = args[:-1]
-            is_p2p = True
+        args = [arg for arg in args if not (is_p2p := is_p2p or arg.lower() == "p2p")]
 
         item, price, qty = parse_item_args(args)
         sell_price = price if is_p2p else price * 0.98
