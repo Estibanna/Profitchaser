@@ -5,6 +5,7 @@ import discord
 from discord.ext import commands
 import sqlite3
 import os
+import re
 from datetime import datetime, timezone, timedelta
 def is_mod_or_owner(member):
     role_names = [role.name.lower() for role in member.roles]
@@ -249,21 +250,29 @@ async def clear_all_data(ctx):
 
 
 
-# Price parsing
+
 def parse_price(price_str):
     original = price_str  # Bewaar voor foutmelding
-    price_str = price_str.lower().replace("gp", "").strip()
+    price_str = price_str.lower().replace(",", "").strip()
 
-    if price_str.endswith("b"):
-        return float(price_str[:-1]) * 1_000_000_000
-    elif price_str.endswith("m"):
-        return float(price_str[:-1]) * 1_000_000
-    elif price_str.endswith("k"):
-        return float(price_str[:-1]) * 1_000
-    elif original.lower().endswith("gp"):
-        return float(price_str)
+    match = re.fullmatch(r"([\d\.]+)\s*(b|m|k|gp)?", price_str)
+    if not match:
+        raise ValueError("❌ Invalid price: use a number with a suffix like `k`, `m`, `b`, or `gp`.")
+
+    number_str, suffix = match.groups()
+    number = float(number_str)
+
+    if suffix == "b":
+        return number * 1_000_000_000
+    elif suffix == "m":
+        return number * 1_000_000
+    elif suffix == "k":
+        return number * 1_000
+    elif suffix == "gp" or suffix is None:
+        return number
     else:
-        raise ValueError("❌ Invalid price: include a unit like `k`, `m`, `b`, or `gp`.")
+        raise ValueError("❌ Invalid price suffix. Use `k`, `m`, `b`, or `gp`.")
+
 
 # Generic parser
 def parse_item_args(args):
