@@ -1231,7 +1231,7 @@ async def drops(ctx):
     msg += f"\n**Total drops:** {int(total):,} gp"
     await ctx.send(msg)
 
-
+#modstuff
 
 
 @bot.command()
@@ -1244,6 +1244,19 @@ async def debugprofit(ctx, *, item: str):
     msg = "**🔎 Profit records:**\n"
     for rowid, profit, name, sell_rowid in rows:
         msg += f"• rowid={rowid}, profit={int(profit)}, item={name}, sell_rowid={sell_rowid}\n"
+    await ctx.send(msg)
+
+
+@bot.command()
+async def debugsell(ctx, rowid: int):
+    c.execute("SELECT buy_price, qty_used FROM sell_details WHERE sell_rowid = ?", (rowid,))
+    rows = c.fetchall()
+    if not rows:
+        await ctx.send(f"❌ No sell_details found for rowid={rowid}.")
+        return
+    msg = f"📦 Sell details for rowid {rowid}:\n"
+    for price, qty in rows:
+        msg += f"• {int(qty)}x bought at {int(price)} gp\n"
     await ctx.send(msg)
     
 bot.run(TOKEN)
