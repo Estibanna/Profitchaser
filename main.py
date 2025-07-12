@@ -5,6 +5,7 @@ import discord
 from discord.ext import commands
 import sqlite3
 import os
+
 import re
 from datetime import datetime, timezone, timedelta
 def is_mod_or_owner(member):
@@ -17,7 +18,7 @@ def is_allowed_guild(ctx):
     return ctx.guild and ctx.guild.id == ALLOWED_GUILD_ID
     
 ALLOWED_DM_USERS = {"sdw2003", "estibanna"}
-
+user_track_requests = {}
 def is_allowed_dm_user(ctx):
     return isinstance(ctx.channel, discord.DMChannel) and ctx.author.name.lower() in ALLOWED_DM_USERS
 
@@ -1230,6 +1231,20 @@ async def drops(ctx):
     msg += f"\n**Total drops:** {int(total):,} gp"
     await ctx.send(msg)
 
+
+
+
+@bot.command()
+async def debugprofit(ctx, *, item: str):
+    c.execute("SELECT rowid, profit, item, sell_rowid FROM profits WHERE user_id=? AND item=?", (ctx.author.id, item.lower()))
+    rows = c.fetchall()
+    if not rows:
+        await ctx.send("❌ No profit entries found.")
+        return
+    msg = "**🔎 Profit records:**\n"
+    for rowid, profit, name, sell_rowid in rows:
+        msg += f"• rowid={rowid}, profit={int(profit)}, item={name}, sell_rowid={sell_rowid}\n"
+    await ctx.send(msg)
     
 bot.run(TOKEN)
 
