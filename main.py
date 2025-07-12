@@ -521,13 +521,16 @@ async def stock(ctx):
 async def profit(ctx, *, item: str):
     item = item.lower()
 
-    # Haal totaal winst en aantal verkochte stuks op voor dat item
     c.execute("""
-        SELECT SUM(sd.qty_used), SUM(p.profit)
+        SELECT 
+            (SELECT SUM(sd.qty_used)
+             FROM sell_details sd
+             JOIN profits p2 ON p2.sell_rowid = sd.sell_rowid
+             WHERE p2.user_id = ? AND p2.item = ?) AS total_qty,
+            SUM(p.profit)
         FROM profits p
-        JOIN sell_details sd ON p.rowid = sd.sell_rowid
         WHERE p.user_id = ? AND p.item = ?
-    """, (ctx.author.id, item))
+    """, (ctx.author.id, item, ctx.author.id, item))
 
     row = c.fetchone()
     if row and row[0]:
@@ -536,6 +539,7 @@ async def profit(ctx, *, item: str):
         await ctx.send(f"📈 You have flipped `{int(qty_flipped)}`x **{item}** with a total profit of **{formatted}**.")
     else:
         await ctx.send(f"❌ No profit data found for `{item}`.")
+
 
 
 @bot.command()
