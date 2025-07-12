@@ -817,31 +817,44 @@ async def payed(ctx, *args):
 @bot.command()
 async def avgprofit(ctx):
     c.execute("""
-        SELECT SUM(p.profit), SUM(sd.qty_used)
+        SELECT 
+            SUM(p.profit), 
+            SUM(sd.qty_used), 
+            COUNT(*) 
         FROM profits p
-        JOIN sell_details sd ON p.sell_rowid = sd.sell_rowid
+        LEFT JOIN sell_details sd ON p.sell_rowid = sd.sell_rowid
         WHERE p.user_id = ?
     """, (ctx.author.id,))
     row = c.fetchone()
-    if row and row[0] and row[1]:
-        total_profit, total_qty = row
-        avg = total_profit / total_qty
-        await ctx.send(f"📊 Your average profit per flip is: {int(avg):,} gp.")
-    else:
+    if not row or not row[0]:
         await ctx.send("❌ No profit data found.")
+        return
+
+    total_profit = row[0]
+    qty_used = row[1] if row[1] else row[2]  # fallback naar COUNT(*)
+    avg = total_profit / qty_used if qty_used else 0
+
+    await ctx.send(f"📊 Your average profit per flip is: {int(avg):,} gp.")
+
 
 
 @bot.command()
 async def flips(ctx):
     c.execute("""
-        SELECT SUM(sd.qty_used)
+        SELECT 
+            SUM(sd.qty_used), 
+            COUNT(*) 
         FROM profits p
-        JOIN sell_details sd ON p.sell_rowid = sd.sell_rowid
+        LEFT JOIN sell_details sd ON p.sell_rowid = sd.sell_rowid
         WHERE p.user_id = ?
     """, (ctx.author.id,))
     row = c.fetchone()
-    total_qty = int(row[0]) if row and row[0] else 0
-    await ctx.send(f"🔁 You have completed {total_qty} flips.")
+    qty_flips = int(row[0]) if row[0] else 0
+    count_backups = int(row[1]) if row[1] else 0
+
+    total = qty_flips if qty_flips else count_backups
+    await ctx.send(f"🔁 You have completed {total} flips.")
+
 
 
 
