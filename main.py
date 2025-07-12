@@ -127,7 +127,11 @@ try:
     conn.commit()
 except sqlite3.OperationalError:
     pass  # Kolom bestaat al, negeer de fout
-
+try:
+    c.execute("ALTER TABLE profits ADD COLUMN sell_rowid INTEGER")
+    conn.commit()
+except sqlite3.OperationalError:
+    pass  # Kolom bestaat al, negeer de fout
 
 
 conn.commit()
@@ -316,19 +320,22 @@ async def record_sell(ctx, args):
 
         item, price, qty = parse_item_args(args)
         sell_price = price if is_p2p else price * 0.98
+
+        # Zoek bestaande buys
         c.execute("SELECT rowid, price, qty FROM flips WHERE user_id=? AND item=? AND type='buy' ORDER BY timestamp",
                   (ctx.author.id, item))
         rows = c.fetchall()
+
         remaining = qty
         profit = 0
-        sell_details = []  # ← Nieuw: om bij te houden wat er is gebruikt
+        sell_details = []
 
         for rowid, buy_price, buy_qty in rows:
             if remaining == 0:
                 break
             used = min(remaining, buy_qty)
             profit += (sell_price - buy_price) * used
-            sell_details.append((buy_price, used))  # ← Log de gebruikte buy
+            sell_details.append((buy_price, used))
             new_qty = buy_qty - used
             if new_qty == 0:
                 c.execute("DELETE FROM flips WHERE rowid=?", (rowid,))
@@ -338,48 +345,55 @@ async def record_sell(ctx, args):
 
         if qty - remaining > 0:
             now = datetime.now(timezone.utc)
-            c.execute("INSERT INTO profits (user_id, profit, timestamp, month, year, item) VALUES (?, ?, ?, ?, ?, ?)",
-                      (ctx.author.id, profit, now.isoformat(), now.strftime("%Y-%m"), now.strftime("%Y"), item))
 
-            # Voeg sell toe zodat !reset weet wat de verkoop was
+            # Voeg sell toe zodat we het rowid hebben
             c.execute("INSERT INTO flips (user_id, item, price, qty, type) VALUES (?, ?, ?, ?, 'sell')",
                       (ctx.author.id, item, price, qty))
-            
-            # Haal rowid van zojuist toegevoegde sell op
+
             c.execute("""SELECT rowid FROM flips 
                          WHERE user_id=? AND item=? AND price=? AND qty=? AND type='sell' 
                          ORDER BY timestamp DESC LIMIT 1""",
                       (ctx.author.id, item, price, qty))
             sell_row = c.fetchone()
+
             if sell_row:
                 sell_rowid = sell_row[0]
-                # Voeg gebruikte buys toe aan sell_details-tabel
+
+                # Voeg de winst toe en koppel aan sell_rowid
+                c.execute("""INSERT INTO profits 
+                             (user_id, profit, timestamp, month, year, item, sell_rowid) 
+                             VALUES (?, ?, ?, ?, ?, ?, ?)""",
+                          (ctx.author.id, profit, now.isoformat(),
+                           now.strftime("%Y-%m"), now.strftime("%Y"), item, sell_rowid))
+
+                # Voeg sell details toe
                 for buy_price, used_qty in sell_details:
                     c.execute("INSERT INTO sell_details (sell_rowid, buy_price, qty_used) VALUES (?, ?, ?)",
                               (sell_rowid, buy_price, used_qty))
 
-            # Notificeer watchers uit de database
-            c.execute("SELECT user_id, max_price FROM watchlist WHERE item=?", (item,))
-            watchers = c.fetchall()
-            for watcher_id, max_price in watchers:
-                if price <= max_price:
-                    user = await bot.fetch_user(watcher_id)
-                    try:
-                        await user.send(f"🔔 `{item}` has been sold for {int(price):,} gp or less!")
-                        c.execute("DELETE FROM watchlist WHERE user_id=? AND item=?", (watcher_id, item))
-                    except:
-                        pass
+                # Notificeer watchers
+                c.execute("SELECT user_id, max_price FROM watchlist WHERE item=?", (item,))
+                watchers = c.fetchall()
+                for watcher_id, max_price in watchers:
+                    if price <= max_price:
+                        user = await bot.fetch_user(watcher_id)
+                        try:
+                            await user.send(f"🔔 `{item}` has been sold for {int(price):,} gp or less!")
+                            c.execute("DELETE FROM watchlist WHERE user_id=? AND item=?", (watcher_id, item))
+                        except:
+                            pass
 
-            conn.commit()
+                conn.commit()
 
-            # Check user_track_requests alerts
-            for user_id, items in user_track_requests.items():
-                for tracked_item, limit_price in items:
-                    if tracked_item == item.lower() and sell_price <= limit_price:
-                        user = await bot.fetch_user(user_id)
-                        if user:
-                            await user.send(f"📉 `{item}` just hit `{price}` (below your `{limit_price}` alert)")
+                # Stuur alert voor user-tracking (optioneel)
+                for user_id, items in user_track_requests.items():
+                    for tracked_item, limit_price in items:
+                        if tracked_item == item.lower() and sell_price <= limit_price:
+                            user = await bot.fetch_user(user_id)
+                            if user:
+                                await user.send(f"📉 `{item}` just hit `{price}` (below your `{limit_price}` alert)")
                             break
+
         else:
             await ctx.send("⚠️ Not enough stock to sell.")
 
