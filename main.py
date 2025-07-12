@@ -521,24 +521,42 @@ async def stock(ctx):
 async def profit(ctx, *, item: str):
     item = item.lower()
 
+    # 1. Totaal aantal stuks via sell_details
     c.execute("""
-        SELECT 
-            (SELECT SUM(sd.qty_used)
-             FROM sell_details sd
-             JOIN profits p2 ON p2.sell_rowid = sd.sell_rowid
-             WHERE p2.user_id = ? AND p2.item = ?) AS total_qty,
-            SUM(p.profit)
+        SELECT SUM(sd.qty_used)
+        FROM profits p
+        JOIN sell_details sd ON p.sell_rowid = sd.sell_rowid
+        WHERE p.user_id = ? AND p.item = ?
+    """, (ctx.author.id, item))
+    modern_qty = c.fetchone()[0] or 0
+
+    # 2. Aantal legacy flips zonder sell_details
+    c.execute("""
+        SELECT COUNT(*)
         FROM profits p
         WHERE p.user_id = ? AND p.item = ?
-    """, (ctx.author.id, item, ctx.author.id, item))
+          AND NOT EXISTS (
+              SELECT 1 FROM sell_details sd WHERE sd.sell_rowid = p.sell_rowid
+          )
+    """, (ctx.author.id, item))
+    legacy_flips = c.fetchone()[0] or 0
 
-    row = c.fetchone()
-    if row and row[0]:
-        qty_flipped, total_profit = row
+    # 3. Totale winst (blijft gewoon SUM(profit))
+    c.execute("""
+        SELECT SUM(profit)
+        FROM profits
+        WHERE user_id = ? AND item = ?
+    """, (ctx.author.id, item))
+    total_profit = c.fetchone()[0] or 0
+
+    total_qty = int(modern_qty) + int(legacy_flips)
+
+    if total_qty > 0:
         formatted = format_price(total_profit)
-        await ctx.send(f"📈 You have flipped `{int(qty_flipped)}`x **{item}** with a total profit of **{formatted}**.")
+        await ctx.send(f"📈 You have flipped `{total_qty}`x **{item}** with a total profit of **{formatted}**.")
     else:
         await ctx.send(f"❌ No profit data found for `{item}`.")
+
 
 
 
@@ -816,44 +834,69 @@ async def payed(ctx, *args):
 
 @bot.command()
 async def avgprofit(ctx):
+    # 1. Totale winst
     c.execute("""
-        SELECT 
-            SUM(p.profit), 
-            SUM(sd.qty_used), 
-            COUNT(*) 
+        SELECT SUM(profit)
+        FROM profits
+        WHERE user_id = ?
+    """, (ctx.author.id,))
+    total_profit = c.fetchone()[0] or 0
+
+    # 2. Aantal stuks via sell_details
+    c.execute("""
+        SELECT SUM(sd.qty_used)
         FROM profits p
-        LEFT JOIN sell_details sd ON p.sell_rowid = sd.sell_rowid
+        JOIN sell_details sd ON p.sell_rowid = sd.sell_rowid
         WHERE p.user_id = ?
     """, (ctx.author.id,))
-    row = c.fetchone()
-    if not row or not row[0]:
+    modern_qty = c.fetchone()[0] or 0
+
+    # 3. Aantal flips zonder sell_details
+    c.execute("""
+        SELECT COUNT(*)
+        FROM profits p
+        WHERE p.user_id = ?
+          AND NOT EXISTS (
+              SELECT 1 FROM sell_details sd WHERE sd.sell_rowid = p.sell_rowid
+          )
+    """, (ctx.author.id,))
+    legacy_flips = c.fetchone()[0] or 0
+
+    total_qty = int(modern_qty) + int(legacy_flips)
+
+    if total_qty == 0:
         await ctx.send("❌ No profit data found.")
-        return
+    else:
+        avg = total_profit / total_qty
+        await ctx.send(f"📊 Your average profit per flip is: {int(avg):,} gp.")
 
-    total_profit = row[0]
-    qty_used = row[1] if row[1] else row[2]  # fallback naar COUNT(*)
-    avg = total_profit / qty_used if qty_used else 0
-
-    await ctx.send(f"📊 Your average profit per flip is: {int(avg):,} gp.")
 
 
 
 @bot.command()
 async def flips(ctx):
+    # Telling van moderne flips met sell_details
     c.execute("""
-        SELECT 
-            SUM(sd.qty_used), 
-            COUNT(*) 
+        SELECT SUM(sd.qty_used)
         FROM profits p
-        LEFT JOIN sell_details sd ON p.sell_rowid = sd.sell_rowid
+        JOIN sell_details sd ON p.sell_rowid = sd.sell_rowid
         WHERE p.user_id = ?
     """, (ctx.author.id,))
-    row = c.fetchone()
-    qty_flips = int(row[0]) if row[0] else 0
-    count_backups = int(row[1]) if row[1] else 0
+    modern_qty = c.fetchone()[0] or 0
 
-    total = qty_flips if qty_flips else count_backups
-    await ctx.send(f"🔁 You have completed {total} flips.")
+    # Telling van oude flips zonder sell_details
+    c.execute("""
+        SELECT COUNT(*)
+        FROM profits p
+        WHERE p.user_id = ?
+          AND NOT EXISTS (
+              SELECT 1 FROM sell_details sd WHERE sd.sell_rowid = p.sell_rowid
+          )
+    """, (ctx.author.id,))
+    legacy_flips = c.fetchone()[0] or 0
+
+    total_flips = int(modern_qty) + int(legacy_flips)
+    await ctx.send(f"🔁 You have completed {total_flips} flips.")
 
 
 
