@@ -250,6 +250,26 @@ async def clear_all_data(ctx):
     await ctx.send("🧹 All data has been wiped.")
 
 
+def parse_price(price_str):
+    price_str = price_str.lower().replace(",", "").strip()
+
+    match = re.fullmatch(r"([\d\.]+)\s*(b|m|k|gp)", price_str)
+    if not match:
+        raise ValueError("❌ Invalid price: add a suffix like `k`, `m`, `b`, or `gp` (e.g. `540m`).")
+
+    number_str, suffix = match.groups()
+    number = float(number_str)
+
+    if suffix == "b":
+        return number * 1_000_000_000
+    elif suffix == "m":
+        return number * 1_000_000
+    elif suffix == "k":
+        return number * 1_000
+    elif suffix == "gp":
+        return number
+    else:
+        raise ValueError("❌ Invalid price suffix. Use `k`, `m`, `b`, or `gp`.")
 
 
 
