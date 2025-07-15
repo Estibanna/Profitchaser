@@ -282,12 +282,12 @@ async def record_buy(ctx, args):
         c.execute("INSERT INTO flips (user_id, item, price, qty, type) VALUES (?, ?, ?, ?, ?)",
                   (ctx.author.id, item, price, qty, "buy"))
         conn.commit()
-        await ctx.send(f"📥 Bought `{item}` for {int(price):,} gp x{qty}.")
+        
     except ValueError as ve:
         await ctx.send(str(ve))  # toont fout over ontbrekende suffix
     except Exception as e:
-    await ctx.send(f"❌ Unexpected error: `{type(e).__name__}` – {str(e)}")
-    print("[BUY ERROR]", type(e).__name__, e)
+        await ctx.send(f"❌ Unexpected error: `{type(e).__name__}` – {str(e)}")
+        print("[BUY ERROR]", type(e).__name__, e)
 
 #sell_handle
 async def record_sell(ctx, args):
