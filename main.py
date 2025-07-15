@@ -255,28 +255,26 @@ async def clear_all_data(ctx):
 
 
 
+def parse_item_args(args):
+    args = list(args)
+    # Strip trailing woorden die geen qty of prijs zijn
+    while args and not args[-1].lower().startswith("x") and not any(c.isdigit() for c in args[-1]):
+        args.pop()
 
-def parse_price(price_str):
-    original = price_str  # Bewaar voor foutmelding
-    price_str = price_str.lower().replace(",", "").strip()
-
-    match = re.fullmatch(r"([\d\.]+)\s*(b|m|k|gp)", price_str)
-    if not match:
-        raise ValueError("❌ Invalid price: add a suffix like `k`, `m`, `b`, or `gp` (e.g. `540m`, `2.3k`).")
-
-    number_str, suffix = match.groups()
-    number = float(number_str)
-
-    if suffix == "b":
-        return number * 1_000_000_000
-    elif suffix == "m":
-        return number * 1_000_000
-    elif suffix == "k":
-        return number * 1_000
-    elif suffix == "gp":
-        return number
+    qty = 1
+    if len(args) >= 3 and args[-1].lower().startswith("x") and args[-1][1:].isdigit():
+        qty = int(args[-1][1:])
+        price_str = args[-2]
+        item_name = " ".join(args[:-2])
     else:
-        raise ValueError("❌ Invalid price suffix. Use `k`, `m`, `b`, or `gp`.")
+        price_str = args[-1]
+        item_name = " ".join(args[:-1])
+
+    # 👇 Gooi fout als price_str geen suffix bevat
+    if not re.fullmatch(r"[\d\.]+(b|m|k|gp)", price_str.lower()):
+        raise ValueError("❌ Invalid price. Add a suffix like `k`, `m`, `b`, or `gp` (e.g. `540m`, `2.5k`).")
+
+    return item_name.lower(), parse_price(price_str), qty
 
 
 
@@ -309,9 +307,9 @@ async def record_buy(ctx, args):
         conn.commit()
         await ctx.send(f"📥 Bought `{item}` for {int(price):,} gp x{qty}.")
     except ValueError as ve:
-        await ctx.send(str(ve))  # toon duidelijke prijsfout
+        await ctx.send(str(ve))
     except Exception as e:
-        await ctx.send("❌ Invalid input for buy. Use `!nib <item> <price+suffix> [x<qty>]`")
+        await ctx.send("❌ Invalid input. Use `!nib <item> <price+suffix> [x<qty>]`")
         print("[BUY ERROR]", e)
 
 #sell_handle
