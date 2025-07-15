@@ -253,12 +253,8 @@ async def clear_all_data(ctx):
 
 
 
-
-
-
 def parse_item_args(args):
     args = list(args)
-    # Strip trailing woorden die geen qty of prijs zijn
     while args and not args[-1].lower().startswith("x") and not any(c.isdigit() for c in args[-1]):
         args.pop()
 
@@ -271,7 +267,6 @@ def parse_item_args(args):
         price_str = args[-1]
         item_name = " ".join(args[:-1])
 
-    # 👇 Gooi fout als price_str geen suffix bevat
     if not re.fullmatch(r"[\d\.]+(b|m|k|gp)", price_str.lower()):
         raise ValueError("❌ Invalid price. Add a suffix like `k`, `m`, `b`, or `gp` (e.g. `540m`, `2.5k`).")
 
