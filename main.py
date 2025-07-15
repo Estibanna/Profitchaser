@@ -255,6 +255,7 @@ async def clear_all_data(ctx):
 
 
 
+
 def parse_item_args(args):
     args = list(args)
     # Strip trailing woorden die geen qty of prijs zijn
@@ -278,27 +279,8 @@ def parse_item_args(args):
 
 
 
-# Generic parser
-def parse_item_args(args):
-    args = list(args)
-    # Strip trailing non-qty words like 'stretch', 'gl', 'fast'
-    while args and not args[-1].lower().startswith("x") and not any(c.isdigit() for c in args[-1]):
-        args.pop()
-
-    qty = 1
-    if len(args) >= 3 and args[-1].lower().startswith("x") and args[-1][1:].isdigit():
-        qty = int(args[-1][1:])
-        price_str = args[-2]
-        item_name = " ".join(args[:-2])
-    else:
-        price_str = args[-1]
-        item_name = " ".join(args[:-1])
-
-    return item_name.lower(), parse_price(price_str), qty
-
 
 # Buy handler
-
 async def record_buy(ctx, args):
     try:
         item, price, qty = parse_item_args(args)
@@ -307,7 +289,7 @@ async def record_buy(ctx, args):
         conn.commit()
         await ctx.send(f"📥 Bought `{item}` for {int(price):,} gp x{qty}.")
     except ValueError as ve:
-        await ctx.send(str(ve))
+        await ctx.send(str(ve))  # toont fout over ontbrekende suffix
     except Exception as e:
         await ctx.send("❌ Invalid input. Use `!nib <item> <price+suffix> [x<qty>]`")
         print("[BUY ERROR]", e)
