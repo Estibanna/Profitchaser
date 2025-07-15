@@ -286,8 +286,8 @@ async def record_buy(ctx, args):
     except ValueError as ve:
         await ctx.send(str(ve))  # toont fout over ontbrekende suffix
     except Exception as e:
-        await ctx.send("❌ Invalid input. Use `!nib <item> <price+suffix> [x<qty>]`")
-        print("[BUY ERROR]", e)
+    await ctx.send(f"❌ Unexpected error: `{type(e).__name__}` – {str(e)}")
+    print("[BUY ERROR]", type(e).__name__, e)
 
 #sell_handle
 async def record_sell(ctx, args):
