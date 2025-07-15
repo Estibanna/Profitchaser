@@ -260,9 +260,9 @@ def parse_price(price_str):
     original = price_str  # Bewaar voor foutmelding
     price_str = price_str.lower().replace(",", "").strip()
 
-    match = re.fullmatch(r"([\d\.]+)\s*(b|m|k|gp)?", price_str)
+    match = re.fullmatch(r"([\d\.]+)\s*(b|m|k|gp)", price_str)
     if not match:
-        raise ValueError("❌ Invalid price: use a number with a suffix like `k`, `m`, `b`, or `gp`.")
+        raise ValueError("❌ Invalid price: add a suffix like `k`, `m`, `b`, or `gp` (e.g. `540m`, `2.3k`).")
 
     number_str, suffix = match.groups()
     number = float(number_str)
@@ -273,10 +273,11 @@ def parse_price(price_str):
         return number * 1_000_000
     elif suffix == "k":
         return number * 1_000
-    elif suffix == "gp" or suffix is None:
+    elif suffix == "gp":
         return number
     else:
         raise ValueError("❌ Invalid price suffix. Use `k`, `m`, `b`, or `gp`.")
+
 
 
 # Generic parser
@@ -306,11 +307,12 @@ async def record_buy(ctx, args):
         c.execute("INSERT INTO flips (user_id, item, price, qty, type) VALUES (?, ?, ?, ?, ?)",
                   (ctx.author.id, item, price, qty, "buy"))
         conn.commit()
+        await ctx.send(f"📥 Bought `{item}` for {int(price):,} gp x{qty}.")
+    except ValueError as ve:
+        await ctx.send(str(ve))  # toon duidelijke prijsfout
     except Exception as e:
-        await ctx.send("❌ Invalid input for buy. Use `!nib <item> <price> [x<qty>]`")
-        print(e)
-        print("✅ Inserted flip into database.")
-        print("📂 Current DB path:", os.path.abspath("data/flips.db"))
+        await ctx.send("❌ Invalid input for buy. Use `!nib <item> <price+suffix> [x<qty>]`")
+        print("[BUY ERROR]", e)
 
 #sell_handle
 async def record_sell(ctx, args):
