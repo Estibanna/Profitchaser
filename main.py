@@ -496,16 +496,32 @@ def is_allowed_user(ctx):
 
 @bot.command()
 async def stock(ctx):
-    c.execute("SELECT item, SUM(qty) FROM flips WHERE user_id=? AND type='buy' GROUP BY item", (ctx.author.id,))
+    c.execute("""
+        SELECT item, price, SUM(qty) 
+        FROM flips 
+        WHERE user_id=? AND type='buy' 
+        GROUP BY item, price 
+        ORDER BY item, price DESC
+    """, (ctx.author.id,))
     rows = c.fetchall()
 
     if not rows:
         await ctx.author.send("📦 You have no inventory.")
         return
 
-    msg = "**📦 Your inventory:**\n"
-    for item, qty in rows:
-        msg += f"• {item} x{qty}\n"
+    def short_price(value):
+        if value >= 1_000_000:
+            return f"{value / 1_000_000:.2f}".rstrip("0").rstrip(".") + "m"
+        elif value >= 1_000:
+            return f"{value / 1_000:.2f}".rstrip("0").rstrip(".") + "k"
+        else:
+            return f"{int(value)}gp"
+
+    msg = "**📦 Your inventory:**\n\n"
+    msg += "`{:<18} {:>10} {:>8}`\n".format("Item", "Buy", "Qty")
+    msg += "`{:<18} {:>10} {:>8}`\n".format("─" * 18, "─" * 10, "─" * 8)
+    for item, price, qty in rows:
+        msg += "`{:<18} {:>10} {:>8}`\n".format(item[:18].title(), short_price(price), qty)
 
     try:
         await ctx.author.send(msg)
