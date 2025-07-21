@@ -1163,7 +1163,7 @@ async def bestitem(ctx):
 async def fliptoday(ctx):
     today = datetime.now(timezone.utc).date().isoformat()
     c.execute("""
-        SELECT p.item, p.profit, f.price AS sell_price, p.sell_rowid
+        SELECT p.item, p.profit, f.price AS sell_price, f.qty, p.sell_rowid
         FROM profits p
         JOIN flips f ON p.sell_rowid = f.rowid
         WHERE p.user_id = ? AND DATE(p.timestamp) = ?
@@ -1195,7 +1195,7 @@ async def fliptoday(ctx):
 
     total_profit = 0
     lines = []
-    for item, profit, sell_price, sell_rowid in rows:
+    for item, profit, sell_price, qty, sell_rowid in rows:
         total_profit += profit
         c.execute("""
             SELECT SUM(qty_used), SUM(buy_price * qty_used)
@@ -1204,19 +1204,20 @@ async def fliptoday(ctx):
         """, (sell_rowid,))
         result = c.fetchone()
         if result and result[0]:
-            qty, total_buy = result
-            avg_buy = total_buy / qty
-            lines.append((item.title(), short_price(avg_buy), short_price(sell_price), format_profit(profit)))
+            qty_used, total_buy = result
+            avg_buy = total_buy / qty_used
+            lines.append((item.title(), short_price(avg_buy), short_price(sell_price), int(qty_used), format_profit(profit)))
         else:
-            lines.append((item.title(), "-", short_price(sell_price), format_profit(profit)))
+            lines.append((item.title(), "-", short_price(sell_price), int(qty), format_profit(profit)))
 
     # Format as table
     msg = "**📊 Flips completed today:**\n\n"
-    msg += "`{:<18} {:>10} {:>10} {:>10}`\n".format("Item", "Buy", "Sell", "Profit")
-    msg += "`{:<18} {:>10} {:>10} {:>10}`\n".format("─" * 18, "─" * 10, "─" * 10, "─" * 10)
-    for item, buy, sell, profit in lines:
-        msg += "`{:<18} {:>10} {:>10} {:>10}`\n".format(item[:18], buy, sell, profit)
-    msg += "\n**Total profit today: {}**".format(format_profit(total_profit))
+    msg += "`{:<18} {:>9} {:>9} {:>5} {:>10}`\n".format("Item", "Buy", "Sell", "Qty", "Profit")
+    msg += "`{:<18} {:>9} {:>9} {:>5} {:>10}`\n".format("─"*18, "─"*9, "─"*9, "─"*5, "─"*10)
+    for item, buy, sell, qty, profit in lines:
+        msg += "`{:<18} {:>9} {:>9} {:>5} {:>10}`\n".format(item[:18], buy, sell, qty, profit)
+
+    msg += f"\n**Total profit today: {format_profit(total_profit)}**"
 
     try:
         await ctx.author.send(msg)
