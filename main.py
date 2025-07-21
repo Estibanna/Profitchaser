@@ -1299,6 +1299,13 @@ async def drops(ctx):
     msg += f"\n**Total drops:** {int(total):,} gp"
     await ctx.send(msg)
 
+
+@bot.command()
+async def clearexpenses(ctx):
+    c.execute("DELETE FROM costs WHERE user_id=?", (ctx.author.id,))
+    c.execute("DELETE FROM drops WHERE user_id=?", (ctx.author.id,))
+    conn.commit()
+    await ctx.send("🧹 All your costs and drops have been deleted.")
 #modstuff
 
 
