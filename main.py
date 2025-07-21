@@ -1161,7 +1161,7 @@ async def fliptoday(ctx):
 
     # Hergebruik je eigen format_profit() functie
     def format_profit(value):
-        sign = "+" if value >= 0 else "-"
+        
         value = abs(value)
         if value >= 1_000_000:
             return f"{sign}{value / 1_000_000:.2f}".rstrip("0").rstrip(".") + "m"
