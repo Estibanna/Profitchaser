@@ -1147,10 +1147,11 @@ async def bestitem(ctx):
 async def fliptoday(ctx):
     today = datetime.now(timezone.utc).date().isoformat()
     c.execute("""
-        SELECT item, profit, timestamp
-        FROM profits
-        WHERE user_id = ? AND DATE(timestamp) = ?
-        ORDER BY timestamp
+        SELECT p.item, p.profit, f.price AS sell_price, p.sell_rowid
+        FROM profits p
+        JOIN flips f ON p.sell_rowid = f.rowid
+        WHERE p.user_id = ? AND DATE(p.timestamp) = ?
+        ORDER BY p.timestamp
     """, (ctx.author.id, today))
     rows = c.fetchall()
 
@@ -1158,7 +1159,7 @@ async def fliptoday(ctx):
         await ctx.send("📭 You haven't completed any flips today (buy + sell).")
         return
 
-    # Helper om winst/verlies mooi te formatteren
+    # Hergebruik je eigen format_profit() functie
     def format_profit(value):
         sign = "+" if value >= 0 else "-"
         value = abs(value)
@@ -1171,9 +1172,28 @@ async def fliptoday(ctx):
 
     msg = "**📊 Flips completed today:**\n"
     total_profit = 0
-    for item, profit, _ in rows:
+
+    for item, profit, sell_price, sell_rowid in rows:
         total_profit += profit
-        msg += f"{item.title()}: **{format_profit(profit)}**\n"
+
+        # Haal de totale qty en totaal betaalde waarde van deze verkoop op
+        c.execute("""
+            SELECT SUM(qty_used), SUM(buy_price * qty_used)
+            FROM sell_details
+            WHERE sell_rowid = ?
+        """, (sell_rowid,))
+        result = c.fetchone()
+        if result and result[0]:
+            qty, total_buy = result
+            avg_buy = total_buy / qty
+            msg += (
+                f"{item.title()}: buy {format_profit(avg_buy)} → "
+                f"sell {format_profit(sell_price)} → "
+                f"profit {format_profit(profit)}\n"
+            )
+        else:
+            # Legacy fallback zonder buy-info
+            msg += f"{item.title()}: profit {format_profit(profit)} (no buy info)\n"
 
     msg += f"\n**Total profit today: {format_profit(total_profit)}**"
 
@@ -1182,6 +1202,7 @@ async def fliptoday(ctx):
         await ctx.send("📬 I’ve sent your flips in DM.")
     except discord.Forbidden:
         await ctx.send("❌ I can't DM you. Please enable DMs from server members.")
+
 
 @bot.command()
 async def modundo(ctx, member: discord.Member, *, item: str):
