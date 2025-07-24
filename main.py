@@ -12,10 +12,10 @@ def is_mod_or_owner(member):
     role_names = [role.name.lower() for role in member.roles]
     return "mods" in role_names or "owners" in role_names
 ALLOWED_WATCH_USERS = {"estibanna", "noltie"}  # usernames in kleine letters
-ALLOWED_GUILD_ID = [1334260436098355250, 1397853269971304468]
+ALLOWED_GUILD_IDS = [1334260436098355250, 1397853269971304468]
 
 def is_allowed_guild(ctx):
-    return ctx.guild and ctx.guild.id == ALLOWED_GUILD_ID
+    return ctx.guild and ctx.guild.id in ALLOWED_GUILD_IDS
     
 ALLOWED_DM_USERS = {"sdw2003", "estibanna"}
 user_track_requests = {}
@@ -448,7 +448,6 @@ def is_allowed_user(ctx):
         ctx.guild or
         (isinstance(ctx.channel, discord.DMChannel) and ctx.author.name.lower() in ALLOWED_DM_USERS)
     )
-
 @bot.command()
 async def nib(ctx, *args):
     if not is_allowed_user(ctx):
@@ -472,7 +471,6 @@ async def ins(ctx, *args):
     if not is_allowed_user(ctx):
         return
     await record_sell(ctx, args)
-
 
 
 
