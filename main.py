@@ -345,12 +345,12 @@ async def record_sell(ctx, args):
         profit = 0
         sell_details = []
 
-        for rowid, buy_price, buy_qty in rows:
+            for rowid, buy_price, buy_qty, buy_time in rows:
             if remaining == 0:
                 break
             used = min(remaining, buy_qty)
             profit += (sell_price - buy_price) * used
-            sell_details.append((buy_price, used))
+            sell_details.append((buy_price, used, buy_time))
             new_qty = buy_qty - used
             if new_qty == 0:
                 c.execute("DELETE FROM flips WHERE rowid=?", (rowid,))
