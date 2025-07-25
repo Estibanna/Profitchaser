@@ -441,8 +441,11 @@ async def record_sell(ctx, args):
                     formatted_sell = format_price(price)
                     formatted_margin = format_price(max_margin)
 
-                    user = await bot.fetch_user(ctx.author.id)
-                    if user.name.lower() == "estibanna":
+                    if ctx.author.id == 123456789012345678:  # ← jouw echte user ID hier
+                        try:
+                            await ctx.author.send(f"📊 `{item}`: {formatted_buy} → {formatted_sell} (+{formatted_margin})")
+                        except Exception as e:
+                            print(f"[ERROR DM] {e}")
                         try:
                             await user.send(f"📊 `{item}`: {formatted_buy} → {formatted_sell} (+{formatted_margin})")
                         except Exception as e:
