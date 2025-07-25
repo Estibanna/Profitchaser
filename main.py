@@ -399,6 +399,8 @@ async def record_sell(ctx, args):
                          JOIN flips f ON sd.sell_rowid = f.rowid
                          WHERE f.rowid = ?""", (sell_rowid,))
             details = c.fetchall()
+            print("[DEBUG] sell_details:", details)
+
 
             max_margin = None
             best_buy = None
