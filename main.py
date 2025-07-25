@@ -382,6 +382,7 @@ async def record_sell(ctx, args):
                             pass
 
                 conn.commit()
+                
                 # 🔎 Zoek hoogste marge binnen 5 uur
                 c.execute("""
                     SELECT buy_price, qty_used
@@ -421,25 +422,8 @@ async def record_sell(ctx, args):
                     user = await bot.fetch_user(ctx.author.id)
                     if user.name.lower() == "estibanna":
                         try:
-                            await user.send(f"📊 `{item}`: {formatted_buy} → {formatted_sell} (+{formatted_margin})")
-                        except Exception as e:
-                            print(f"[ERROR DM] {e}")
+                            awai
                 
-                
-                                # Stuur alert voor user-tracking (optioneel)
-                                for user_id, items in user_track_requests.items():
-                                    for tracked_item, limit_price in items:
-                                        if tracked_item == item.lower() and sell_price <= limit_price:
-                                            user = await bot.fetch_user(user_id)
-                                            if user:
-                                                await user.send(f"📉 `{item}` just hit `{price}` (below your `{limit_price}` alert)")
-                                            break
-                
-                        else:
-                            await ctx.send("⚠️ Not enough stock to sell.")
-                
-                    except Exception as e:
-                        print("[UNEXPECTED SELL ERROR]", e)
 
 
 
