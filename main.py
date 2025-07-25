@@ -452,13 +452,11 @@ async def record_sell(ctx, args):
                             print(f"[ERROR DM] {e}")
 
                 # Stuur alert voor user-tracking (optioneel)
-                for user_id, items in user_track_requests.items():
-                    for tracked_item, limit_price in items:
-                        if tracked_item == item.lower() and sell_price <= limit_price:
-                            user = await bot.fetch_user(user_id)
-                            if user:
-                                await user.send(f"📉 {item} just hit {price} (below your {limit_price} alert)")
-                            break
+                if ctx.author.id == 270840118318350337:  # jouw echte Discord-ID
+                    try:
+                        await ctx.author.send(f"📊 `{item}`: {formatted_buy} → {formatted_sell} (+{formatted_margin})")
+                    except Exception as e:
+                        print(f"[ERROR DM] {e}")
 
         else:
             await ctx.send("⚠️ Not enough stock to sell.")
