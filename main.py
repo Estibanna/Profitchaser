@@ -446,11 +446,7 @@ async def record_sell(ctx, args):
                             await ctx.author.send(f"📊 `{item}`: {formatted_buy} → {formatted_sell} (+{formatted_margin})")
                         except Exception as e:
                             print(f"[ERROR DM] {e}")
-                        try:
-                            await user.send(f"📊 `{item}`: {formatted_buy} → {formatted_sell} (+{formatted_margin})")
-                        except Exception as e:
-                            print(f"[ERROR DM] {e}")
-
+                      
                 # Stuur alert voor user-tracking (optioneel)
                 if ctx.author.id == 270840118318350337:  # jouw echte Discord-ID
                     try:
