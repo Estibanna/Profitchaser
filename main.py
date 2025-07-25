@@ -404,6 +404,50 @@ async def record_sell(ctx, args):
 
                 conn.commit()
 
+
+                
+                # 🔍 Check voor snelle flip (binnen 5 uur) en stuur DM naar estibanna
+                c.execute("""
+                    SELECT buy_price, qty_used
+                    FROM sell_details
+                    WHERE sell_rowid = ?
+                """, (sell_rowid,))
+                details = c.fetchall()
+
+                max_margin = None
+                best_buy = None
+
+                for buy_price, qty_used in details:
+                    c.execute("""
+                        SELECT timestamp FROM flips
+                        WHERE user_id = ? AND item = ? AND price = ? AND type = 'buy'
+                        ORDER BY timestamp DESC LIMIT 1
+                    """, (ctx.author.id, item, buy_price))
+                    row = c.fetchone()
+                    if not row:
+                        continue
+
+                    buy_time = row[0]
+                    buy_time = datetime.fromisoformat(buy_time) if isinstance(buy_time, str) else buy_time
+
+                    if (now - buy_time) <= timedelta(hours=5):
+                        margin = price - buy_price
+                        if max_margin is None or margin > max_margin:
+                            max_margin = margin
+                            best_buy = buy_price
+
+                if max_margin is not None:
+                    formatted_buy = format_price(best_buy)
+                    formatted_sell = format_price(price)
+                    formatted_margin = format_price(max_margin)
+
+                    user = await bot.fetch_user(ctx.author.id)
+                    if user.name.lower() == "estibanna":
+                        try:
+                            await user.send(f"📊 `{item}`: {formatted_buy} → {formatted_sell} (+{formatted_margin})")
+                        except Exception as e:
+                            print(f"[ERROR DM] {e}")
+
                 # Stuur alert voor user-tracking (optioneel)
                 for user_id, items in user_track_requests.items():
                     for tracked_item, limit_price in items:
