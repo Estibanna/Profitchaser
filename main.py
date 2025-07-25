@@ -382,51 +382,27 @@ async def record_sell(ctx, args):
                         except:
                             pass
 
-                conn.commit()
 
-                # 🔍 Zoek hoogste marge binnen 5 uur en DM estibanna
-                c.execute("""
-                    SELECT buy_price, qty_used
-                    FROM sell_details
-                    WHERE sell_rowid = ?
-                """, (sell_rowid,))
-                details = c.fetchall()
 
-                max_margin = None
-                best_buy = None
-
-                for buy_price, qty_used in details:
-                    c.execute("""
-                        SELECT timestamp FROM flips
-                        WHERE user_id = ? AND item = ? AND price = ? AND type = 'buy'
-                        ORDER BY timestamp DESC LIMIT 1
-                    """, (ctx.author.id, item, buy_price))
-                    buy_time_row = c.fetchone()
-                    if not buy_time_row:
-                        continue
-
-                    buy_time = buy_time_row[0]
-                    buy_time = datetime.fromisoformat(buy_time) if isinstance(buy_time, str) else buy_time
-
-                    if (now - buy_time) <= timedelta(hours=5):
-                        margin = price - buy_price
-                        if max_margin is None or margin > max_margin:
-                            max_margin = margin
-                            best_buy = buy_price
-
-                if max_margin is not None:
-                    formatted_buy = format_price(best_buy)
-                    formatted_sell = format_price(price)
-                    formatted_margin = format_price(max_margin)
-
-                    user = await bot.fetch_user(ctx.author.id)
-                    if user.name.lower() == "estibanna":
-                        print(f"[DEBUG] user.name = {user.name}")
-
+                # Check voor snelle flip (minder dan 5 uur tussen aankoop en verkoop)
+                if sell_rowid and sell_details:
+                    c.execute("""SELECT MIN(timestamp) FROM flips 
+                                 WHERE user_id=? AND item=? AND type='buy' AND timestamp >= ?""",
+                              (ctx.author.id, item, (now - timedelta(hours=5)).isoformat()))
+                    recent_buy = c.fetchone()[0]
+                
+                    if recent_buy:
                         try:
-                            await user.send(f"📊 `{item}`: {formatted_buy} → {formatted_sell} (+{formatted_margin})")
+                            buy_prices = [bp for bp, _ in sell_details]
+                            avg_buy = sum(buy_prices) / len(buy_prices)
+                            formatted_margin = f"{item}: {format_price(avg_buy)} - {format_price(price)}"
+                            await ctx.send(f"🧮 Margin: **{formatted_margin}**")
                         except Exception as e:
-                            print(f"[ERROR DM] {e}")
+                            print("[MARGIN ERROR]", e)
+                
+                                
+
+                conn.commit()
 
                 # Stuur alert voor user-tracking (optioneel)
                 for user_id, items in user_track_requests.items():
