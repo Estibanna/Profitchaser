@@ -406,17 +406,17 @@ async def record_sell(ctx, args):
 
 
                 
-                # 🔍 Check voor snelle flip (binnen 5 uur) en stuur DM naar estibanna
+               # 🔍 Check voor snelle flip (binnen 5 uur) en stuur DM naar estibanna (ongeacht verkoper)
                 c.execute("""
                     SELECT buy_price, qty_used
                     FROM sell_details
                     WHERE sell_rowid = ?
                 """, (sell_rowid,))
                 details = c.fetchall()
-
+                
                 max_margin = None
                 best_buy = None
-
+                
                 for buy_price, qty_used in details:
                     c.execute("""
                         SELECT timestamp FROM flips
@@ -426,33 +426,29 @@ async def record_sell(ctx, args):
                     row = c.fetchone()
                     if not row:
                         continue
-
+                
                     buy_time = row[0]
                     buy_time = datetime.fromisoformat(buy_time) if isinstance(buy_time, str) else buy_time
-
+                
                     if (now - buy_time) <= timedelta(hours=5):
                         margin = price - buy_price
                         if max_margin is None or margin > max_margin:
                             max_margin = margin
                             best_buy = buy_price
-
+                
+                # ✅ Altijd marge DM naar estibanna als er iets is
                 if max_margin is not None:
-                    formatted_buy = format_price(best_buy)
-                    formatted_sell = format_price(price)
-                    formatted_margin = format_price(max_margin)
-
-                    if ctx.author.id == 123456789012345678:  # ← jouw echte user ID hier
-                        try:
-                            await ctx.author.send(f"📊 `{item}`: {formatted_buy} → {formatted_sell} (+{formatted_margin})")
-                        except Exception as e:
-                            print(f"[ERROR DM] {e}")
-                      
-                # Stuur alert voor user-tracking (optioneel)
-                if ctx.author.id == 285207995221147648:  # jouw echte Discord-ID
                     try:
-                        await ctx.author.send(f"📊 `{item}`: {formatted_buy} → {formatted_sell} (+{formatted_margin})")
+                        formatted_buy = format_price(best_buy)
+                        formatted_sell = format_price(price)
+                        formatted_margin = format_price(max_margin)
+                
+                        estibanna_id = 270840118318350337  # <- Jouw echte Discord ID
+                        estibanna = await bot.fetch_user(estibanna_id)
+                        if estibanna:
+                            await estibanna.send(f"📊 `{item}`: {formatted_buy} → {formatted_sell} (+{formatted_margin}) by `{ctx.author.name}`")
                     except Exception as e:
-                        print(f"[ERROR DM] {e}")
+                        print(f"[ERROR sending margin to estibanna] {e}")
 
         else:
             await ctx.send("⚠️ Not enough stock to sell.")
