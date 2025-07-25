@@ -421,6 +421,8 @@ async def record_sell(ctx, args):
 
                     user = await bot.fetch_user(ctx.author.id)
                     if user.name.lower() == "estibanna":
+                        print(f"[DEBUG] user.name = {user.name}")
+
                         try:
                             await user.send(f"📊 `{item}`: {formatted_buy} → {formatted_sell} (+{formatted_margin})")
                         except Exception as e:
