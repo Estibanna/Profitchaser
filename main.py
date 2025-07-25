@@ -443,7 +443,7 @@ async def record_sell(ctx, args):
                         formatted_sell = format_price(price)
                         formatted_margin = format_price(max_margin)
                 
-                        estibanna_id = 270840118318350337  # <- Jouw echte Discord ID
+                        estibanna_id = 285207995221147648  # <- Jouw echte Discord ID
                         estibanna = await bot.fetch_user(estibanna_id)
                         if estibanna:
                             await estibanna.send(f"📊 `{item}`: {formatted_buy} → {formatted_sell} (+{formatted_margin}) by `{ctx.author.name}`")
