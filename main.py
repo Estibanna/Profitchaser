@@ -314,20 +314,29 @@ async def record_buy(ctx, args):
         print("[BUY ERROR]", type(e).__name__, e)
 
 
-#sell_handle
 async def record_sell(ctx, args):
     try:
-        c.execute("ALTER TABLE sell_details ADD COLUMN buy_user_id INTEGER")
-        conn.commit()
-        print("[DB MIGRATIE] Kolom 'buy_user_id' toegevoegd")
-    except sqlite3.OperationalError as e:
-        if "duplicate column name" in str(e).lower():
-            print("[DB MIGRATIE] Kolom 'buy_user_id' bestaat al")
-        else:
-            print("[DB MIGRATIE FOUT]", e)
+        # Stap 1: kolom 'buy_user_id' toevoegen (indien nog niet bestaat)
+        try:
+            c.execute("ALTER TABLE sell_details ADD COLUMN buy_user_id INTEGER")
+            conn.commit()
+            print("[DB MIGRATIE] Kolom 'buy_user_id' toegevoegd")
+        except sqlite3.OperationalError as e:
+            if "duplicate column name" in str(e).lower():
+                print("[DB MIGRATIE] Kolom 'buy_user_id' bestaat al")
+            else:
+                print("[DB MIGRATIE FOUT]", e)
 
-        # Zoek bestaande buys
-        c.execute("SELECT rowid, price, qty FROM flips WHERE user_id=? AND item=? AND type='buy' ORDER BY timestamp",
+        # Stap 2: verkoopverwerking
+        args = list(args)
+        is_p2p = False
+        args = [arg for arg in args if not (is_p2p := is_p2p or arg.lower() == "p2p")]
+
+        item, price, qty = parse_item_args(args)
+        sell_price = price if is_p2p else price * 0.98
+
+        c.execute("""SELECT rowid, price, qty FROM flips 
+                     WHERE user_id=? AND item=? AND type='buy' ORDER BY timestamp""",
                   (ctx.author.id, item))
         rows = c.fetchall()
 
@@ -351,157 +360,99 @@ async def record_sell(ctx, args):
         if qty - remaining > 0:
             now = datetime.now(timezone.utc)
 
-            # Voeg sell toe zodat we het rowid hebben
+            # Insert verkoop
             c.execute("INSERT INTO flips (user_id, item, price, qty, type) VALUES (?, ?, ?, ?, 'sell')",
                       (ctx.author.id, item, price, qty))
-
             c.execute("""SELECT rowid FROM flips 
                          WHERE user_id=? AND item=? AND price=? AND qty=? AND type='sell' 
                          ORDER BY timestamp DESC LIMIT 1""",
                       (ctx.author.id, item, price, qty))
             sell_row = c.fetchone()
+            if not sell_row:
+                await ctx.send("❌ Er ging iets mis bij het registreren van de verkoop.")
+                return
 
-            if sell_row:
-                sell_rowid = sell_row[0]
+            sell_rowid = sell_row[0]
 
-                # Voeg de winst toe en koppel aan sell_rowid
-                c.execute("""INSERT INTO profits 
-                             (user_id, profit, timestamp, month, year, item, sell_rowid) 
-                             VALUES (?, ?, ?, ?, ?, ?, ?)""",
-                          (ctx.author.id, profit, now.isoformat(),
-                           now.strftime("%Y-%m"), now.strftime("%Y"), item, sell_rowid))
+            # Insert winst
+            c.execute("""INSERT INTO profits 
+                         (user_id, profit, timestamp, month, year, item, sell_rowid) 
+                         VALUES (?, ?, ?, ?, ?, ?, ?)""",
+                      (ctx.author.id, profit, now.isoformat(),
+                       now.strftime("%Y-%m"), now.strftime("%Y"), item, sell_rowid))
 
-                # Voeg sell details toe
-                for buy_price, used_qty in sell_details:
-                    # Zoek bijhorende originele koper van deze buy
-                    c.execute("""
-                        SELECT user_id FROM flips
-                        WHERE item = ? AND price = ? AND type = 'buy'
-                        ORDER BY timestamp ASC LIMIT 1
-                    """, (item, buy_price))
-                    result = c.fetchone()
-                    buy_user_id = result[0] if result else ctx.author.id  # fallback: verkoper zelf
-                
-                    c.execute("INSERT INTO sell_details (sell_rowid, buy_price, qty_used, buy_user_id) VALUES (?, ?, ?, ?)",
-                              (sell_rowid, buy_price, used_qty, buy_user_id))
-
-
-                # Notificeer watchers
-                c.execute("SELECT user_id, max_price FROM watchlist WHERE item=?", (item,))
-                watchers = c.fetchall()
-                for watcher_id, max_price in watchers:
-                    if price <= max_price:
-                        user = await bot.fetch_user(watcher_id)
-                        try:
-                            await user.send(f"🔔 {item} has been sold for {int(price):,} gp or less!")
-                            c.execute("DELETE FROM watchlist WHERE user_id=? AND item=?", (watcher_id, item))
-                        except:
-                            pass
-
-
-
-                # ✅ Check voor snelle flip (5u) en stuur margin-DM naar estibanna, ongeacht wie de koper is
+            # Insert sell_details met originele koper (buy_user_id)
+            for buy_price, used_qty in sell_details:
                 c.execute("""
-                    SELECT sd.buy_price, f.price AS sell_price, sd.buy_user_id
-                    FROM sell_details sd
-                    JOIN flips f ON sd.sell_rowid = f.rowid
-                    WHERE f.rowid = ?
-                """, (sell_rowid,))
-                details = c.fetchall()
-                
-                max_margin = None
-                best_buy = None
-                
-                for buy_price, sell_price, buy_user_id in details:
-                    c.execute("""
-                        SELECT timestamp FROM flips
-                        WHERE user_id = ? AND item = ? AND price = ? AND type = 'buy'
-                        ORDER BY timestamp DESC LIMIT 1
-                    """, (buy_user_id, item, buy_price))
-                    row = c.fetchone()
-                    if not row:
-                        continue
-                
-                    buy_time = row[0]
-                    buy_time = datetime.fromisoformat(buy_time) if isinstance(buy_time, str) else buy_time
-                
-                    if (now - buy_time) <= timedelta(hours=5):
-                        margin = sell_price - buy_price
-                        if max_margin is None or margin > max_margin:
-                            max_margin = margin
-                            best_buy = buy_price
-                
-                # 📬 Stuur naar Estibanna (jij) als er marge is
-                if max_margin is not None:
+                    SELECT user_id FROM flips
+                    WHERE item = ? AND price = ? AND type = 'buy'
+                    ORDER BY timestamp ASC LIMIT 1
+                """, (item, buy_price))
+                result = c.fetchone()
+                buy_user_id = result[0] if result else ctx.author.id
+
+                c.execute("""INSERT INTO sell_details 
+                             (sell_rowid, buy_price, qty_used, buy_user_id) 
+                             VALUES (?, ?, ?, ?)""",
+                          (sell_rowid, buy_price, used_qty, buy_user_id))
+
+            # Watcher notificaties
+            c.execute("SELECT user_id, max_price FROM watchlist WHERE item=?", (item,))
+            for watcher_id, max_price in c.fetchall():
+                if price <= max_price:
+                    user = await bot.fetch_user(watcher_id)
                     try:
-                        formatted_buy = format_price(best_buy)
-                        formatted_sell = format_price(price)
-                        formatted_margin = format_price(max_margin)
-                
-                        estibanna_id = 285207995221147648  # <- Jouw echte Discord ID
-                        estibanna = await bot.fetch_user(estibanna_id)
-                        await estibanna.send(f"📊 `{item}`: {formatted_buy} → {formatted_sell} (+{formatted_margin})")
-                    except Exception as e:
-                        
-                
-                                
-                                                
+                        await user.send(f"🔔 {item} has been sold for {int(price):,} gp or less!")
+                        c.execute("DELETE FROM watchlist WHERE user_id=? AND item=?", (watcher_id, item))
+                    except:
+                        pass
 
-                conn.commit()
+            # Margincheck (elke koper binnen 5u → stuur DM naar estibanna)
+            c.execute("""
+                SELECT sd.buy_price, f.price AS sell_price, sd.buy_user_id
+                FROM sell_details sd
+                JOIN flips f ON sd.sell_rowid = f.rowid
+                WHERE f.rowid = ?
+            """, (sell_rowid,))
+            details = c.fetchall()
 
+            max_margin = None
+            best_buy = None
 
-                
-               # 🔍 Check voor snelle flip (binnen 5 uur) en stuur DM naar estibanna (ongeacht verkoper)
+            for buy_price, sell_price, buy_user_id in details:
                 c.execute("""
-                    SELECT buy_price, qty_used
-                    FROM sell_details
-                    WHERE sell_rowid = ?
-                """, (sell_rowid,))
-                details = c.fetchall()
-                
-                max_margin = None
-                best_buy = None
-                
-                for buy_price, qty_used in details:
-                    c.execute("""
-                        SELECT timestamp FROM flips
-                        WHERE item = ? AND price = ? AND type = 'buy'
-                        AND timestamp >= ?
-                        ORDER BY timestamp DESC LIMIT 1
-                    """, (item, buy_price, (now - timedelta(hours=5)).isoformat()))
-                    row = c.fetchone()
-                    if not row:
-                        continue
-                
-                    buy_time = row[0]
-                    buy_time = datetime.fromisoformat(buy_time) if isinstance(buy_time, str) else buy_time
-                
-                    if (now - buy_time) <= timedelta(hours=5):
-                        margin = price - buy_price
-                        if max_margin is None or margin > max_margin:
-                            max_margin = margin
-                            best_buy = buy_price
-                
-                # ✅ Altijd marge DM naar estibanna als er iets is
-                if max_margin is not None:
-                    try:
-                        formatted_buy = format_price(best_buy)
-                        formatted_sell = format_price(price)
-                        formatted_margin = format_price(max_margin)
-                
-                        estibanna_id = 285207995221147648  # <- Jouw echte Discord ID
-                        estibanna = await bot.fetch_user(estibanna_id)
-                        if estibanna:
-                            await estibanna.send(f"📊 `{item}`: {formatted_buy} → {formatted_sell} (+{formatted_margin}) by `{ctx.author.name}`")
-                    except Exception as e:
-                        
+                    SELECT timestamp FROM flips
+                    WHERE user_id = ? AND item = ? AND price = ? AND type = 'buy'
+                    ORDER BY timestamp DESC LIMIT 1
+                """, (buy_user_id, item, buy_price))
+                row = c.fetchone()
+                if not row:
+                    continue
+                buy_time = datetime.fromisoformat(row[0])
+                if (now - buy_time) <= timedelta(hours=5):
+                    margin = sell_price - buy_price
+                    if max_margin is None or margin > max_margin:
+                        max_margin = margin
+                        best_buy = buy_price
+
+            if max_margin is not None:
+                try:
+                    estibanna_id = 285207995221147648
+                    estibanna = await bot.fetch_user(estibanna_id)
+                    formatted_buy = format_price(best_buy)
+                    formatted_sell = format_price(price)
+                    formatted_margin = format_price(max_margin)
+                    await estibanna.send(f"📊 `{item}`: {formatted_buy} → {formatted_sell} (+{formatted_margin}) by `{ctx.author.name}`")
+                except Exception as e:
+                    print("[MARGIN DM FOUT]", e)
+
+            conn.commit()
 
         else:
             await ctx.send("⚠️ Not enough stock to sell.")
 
     except Exception as e:
         print("[UNEXPECTED SELL ERROR]", e)
-
 
 
 def get_flipper_rank(total_profit):
