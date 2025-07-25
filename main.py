@@ -317,22 +317,14 @@ async def record_buy(ctx, args):
 #sell_handle
 async def record_sell(ctx, args):
     try:
-        args = list(args)
-        is_p2p = False
-        args = [arg for arg in args if not (is_p2p := is_p2p or arg.lower() == "p2p")]
-
-        item, price, qty = parse_item_args(args)
-        sell_price = price if is_p2p else price * 0.98
-
-
-
-            conn.commit()
-            print("[DB MIGRATIE] Kolom 'buy_user_id' toegevoegd")
-        except sqlite3.OperationalError as e:
-            if "duplicate column name" in str(e).lower():
-                print("[DB MIGRATIE] Kolom 'buy_user_id' bestaat al")
-            else:
-                print("[DB MIGRATIE FOUT]", e)
+        c.execute("ALTER TABLE sell_details ADD COLUMN buy_user_id INTEGER")
+        conn.commit()
+        print("[DB MIGRATIE] Kolom 'buy_user_id' toegevoegd")
+    except sqlite3.OperationalError as e:
+        if "duplicate column name" in str(e).lower():
+            print("[DB MIGRATIE] Kolom 'buy_user_id' bestaat al")
+        else:
+            print("[DB MIGRATIE FOUT]", e)
 
         # Zoek bestaande buys
         c.execute("SELECT rowid, price, qty FROM flips WHERE user_id=? AND item=? AND type='buy' ORDER BY timestamp",
