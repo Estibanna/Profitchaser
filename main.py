@@ -421,10 +421,10 @@ async def record_sell(ctx, args):
         
             user = await bot.fetch_user(ctx.author.id)
             if user.name.lower() == "estibanna":
-                try:
-                    await user.send(f"📊 `{item}`: {formatted_buy} → {formatted_sell} (+{formatted_margin})")
-                except Exception as e:
-                    print(f"[ERROR DM] {e}")
+            try:
+                await user.send(f"📊 `{item}`: {formatted_buy} → {formatted_sell} (+{formatted_margin})")
+            except Exception as e:
+                print(f"[ERROR DM] {e}")
         
         # 📉 Stuur alert voor user-tracking (optioneel)
         for user_id, items in user_track_requests.items():
