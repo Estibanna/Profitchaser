@@ -5,7 +5,7 @@ import discord
 from discord.ext import commands
 import sqlite3
 import os
-
+from datetime import datetime, timezone
 import re
 from datetime import datetime, timezone, timedelta
 def is_mod_or_owner(member):
@@ -299,8 +299,12 @@ def parse_item_args(args):
 async def record_buy(ctx, args):
     try:
         item, price, qty = parse_item_args(args)
-        c.execute("INSERT INTO flips (user_id, item, price, qty, type) VALUES (?, ?, ?, ?, ?)",
-                  (ctx.author.id, item, price, qty, "buy"))
+        now = datetime.now(timezone.utc)
+        c.execute(
+            "INSERT INTO flips (user_id, item, price, qty, type, timestamp) VALUES (?, ?, ?, ?, ?, ?)",
+            (ctx.author.id, item, price, qty, "buy", now.isoformat())
+        )
+
         conn.commit()
         
     except ValueError as ve:
