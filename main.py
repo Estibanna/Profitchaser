@@ -326,9 +326,6 @@ async def record_sell(ctx, args):
 
 
 
-        # Zorg dat 'buy_user_id' bestaat in sell_details
-        try:
-            c.execute("ALTER TABLE sell_details ADD COLUMN buy_user_id INTEGER")
             conn.commit()
             print("[DB MIGRATIE] Kolom 'buy_user_id' toegevoegd")
         except sqlite3.OperationalError as e:
