@@ -424,9 +424,10 @@ async def record_sell(ctx, args):
                 for buy_price, qty_used in details:
                     c.execute("""
                         SELECT timestamp FROM flips
-                        WHERE user_id = ? AND item = ? AND price = ? AND type = 'buy'
+                        WHERE item = ? AND price = ? AND type = 'buy'
+                        AND timestamp >= ?
                         ORDER BY timestamp DESC LIMIT 1
-                    """, (ctx.author.id, item, buy_price))
+                    """, (item, buy_price, (now - timedelta(hours=5)).isoformat()))
                     row = c.fetchone()
                     if not row:
                         continue
