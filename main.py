@@ -361,7 +361,8 @@ async def record_sell(ctx, args):
 
         if qty - remaining > 0:
             
-            now = datetime.now(timezone.utc).isoformat()
+            dt_now = datetime.now(timezone.utc)
+            now = dt_now.isoformat()
 
             # Insert verkoop
             c.execute("INSERT INTO flips (user_id, item, price, qty, type, timestamp) VALUES (?, ?, ?, ?, 'sell', ?)",
