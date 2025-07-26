@@ -326,7 +326,7 @@ async def record_sell(ctx, args):
                 print("[DB MIGRATIE] Kolom 'buy_user_id' bestaat al")
             else:
                 print("[DB MIGRATIE FOUT]", e)
-
+        
         args = list(args)
         is_p2p = False
         args = [arg for arg in args if not (is_p2p := is_p2p or arg.lower() == "p2p")]
@@ -360,11 +360,13 @@ async def record_sell(ctx, args):
             remaining -= used
 
         if qty - remaining > 0:
-            now = datetime.now(timezone.utc)
+            
+            now = datetime.now(timezone.utc).isoformat()
 
             # Insert verkoop
-            c.execute("INSERT INTO flips (user_id, item, price, qty, type) VALUES (?, ?, ?, ?, 'sell')",
-                      (ctx.author.id, item, price, qty))
+            c.execute("INSERT INTO flips (user_id, item, price, qty, type, timestamp) VALUES (?, ?, ?, ?, 'sell', ?)",
+                      (ctx.author.id, item, price, qty, now))
+
             c.execute("""
                 SELECT rowid FROM flips 
                 WHERE user_id=? AND item=? AND price=? AND qty=? AND type='sell' 
