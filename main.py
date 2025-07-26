@@ -331,7 +331,7 @@ async def record_sell(ctx, args):
         is_p2p = False
         args = [arg for arg in args if not (is_p2p := is_p2p or arg.lower() == "p2p")]
         item, price, qty = parse_item_args(args)
-        sell_price = price * 0.98 if is_p2p else price
+        sell_price = price if is_p2p else round(price * 0.98)
 
         # Haal bestaande buys op mét timestamp
         c.execute("""
