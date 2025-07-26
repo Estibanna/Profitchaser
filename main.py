@@ -366,23 +366,15 @@ async def record_sell(ctx, args):
 
             # Insert verkoop
             c.execute("INSERT INTO flips (user_id, item, price, qty, type, timestamp) VALUES (?, ?, ?, ?, 'sell', ?)",
-                      (ctx.author.id, item, price, qty, now))
-
-            c.execute("""
-                SELECT rowid FROM flips 
-                WHERE user_id=? AND item=? AND price=? AND qty=? AND type='sell' 
-                ORDER BY timestamp DESC LIMIT 1
-            """, (ctx.author.id, item, price, qty))
-            sell_row = c.fetchone()
-            if not sell_row:
-                return await ctx.send("⚠️ Fout bij opslaan verkoop.")
-            sell_rowid = sell_row[0]
-
+                      (ctx.author.id, item, sell_price, qty, now))
+            
+            sell_rowid = c.lastrowid
             # Profits loggen
             c.execute("""
                 INSERT INTO profits (user_id, profit, timestamp, month, year, item, sell_rowid)
                 VALUES (?, ?, ?, ?, ?, ?, ?)
-            """, (ctx.author.id, profit, now.isoformat(), now.strftime("%Y-%m"), now.strftime("%Y"), item, sell_rowid))
+            """, (ctx.author.id, profit, now, dt_now.strftime("%Y-%m"), dt_now.strftime("%Y"), item, sell_rowid))
+
 
             # Sell_details vullen met originele koper
             for buy_price, used_qty, buy_time in sell_details:
@@ -404,7 +396,7 @@ async def record_sell(ctx, args):
             for buy_price, used_qty, buy_time in sell_details:
                 if isinstance(buy_time, str):
                     buy_time = datetime.fromisoformat(buy_time)
-                if (now - buy_time) <= timedelta(hours=5):
+                if (dt_now - buy_time) <= timedelta(hours=5):
                     margin = price - buy_price
                     if max_margin is None or margin > max_margin:
                         max_margin = margin
