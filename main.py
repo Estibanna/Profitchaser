@@ -397,7 +397,7 @@ async def record_sell(ctx, args):
             for buy_price, used_qty, buy_time in sell_details:
                 if isinstance(buy_time, str):
                     buy_time = datetime.fromisoformat(buy_time)
-                if (dt_now - buy_time) <= timedelta(hours=5):
+                if (dt_now - buy_time) <= timedelta(hours=10):
                     margin = price - buy_price
                     if max_margin is None or margin > max_margin:
                         max_margin = margin
