@@ -336,13 +336,12 @@ async def record_sell(ctx, args):
                 print("[DB MIGRATIE] Kolom 'buy_user_id' bestaat al")
             else:
                 print("[DB MIGRATIE FOUT]", e)
-
+        
         args = list(args)
         is_p2p = False
         args = [arg for arg in args if not (is_p2p := is_p2p or arg.lower() == "p2p")]
-
-        item, sell_price, qty = parse_item_args(args)
-        actual_sell_price = sell_price if is_p2p else round(sell_price * 0.98)
+        item, price, qty = parse_item_args(args)
+        sell_price = price if is_p2p else round(price * 0.98)
 
         # Haal bestaande buys op mét timestamp
         c.execute("""
@@ -361,7 +360,7 @@ async def record_sell(ctx, args):
             if remaining == 0:
                 break
             used = min(remaining, buy_qty)
-            profit += (actual_sell_price - buy_price) * used
+            profit += (sell_price - buy_price) * used
             sell_details.append((buy_price, used, buy_time))
             new_qty = buy_qty - used
             if new_qty == 0:
@@ -371,27 +370,21 @@ async def record_sell(ctx, args):
             remaining -= used
 
         if qty - remaining > 0:
-            now = datetime.now(timezone.utc)
+            
+            dt_now = datetime.now(timezone.utc)
+            now = dt_now.isoformat()
 
-            # Insert verkoop (let op: sla originele inputprijs op, niet de aangepaste)
-            c.execute("INSERT INTO flips (user_id, item, price, qty, type) VALUES (?, ?, ?, ?, 'sell')",
-                      (ctx.author.id, item, sell_price, qty))
-
-            c.execute("""
-                SELECT rowid FROM flips 
-                WHERE user_id=? AND item=? AND price=? AND qty=? AND type='sell' 
-                ORDER BY timestamp DESC LIMIT 1
-            """, (ctx.author.id, item, sell_price, qty))
-            sell_row = c.fetchone()
-            if not sell_row:
-                return await ctx.send("⚠️ Fout bij opslaan verkoop.")
-            sell_rowid = sell_row[0]
-
+            # Insert verkoop
+            c.execute("INSERT INTO flips (user_id, item, price, qty, type, timestamp) VALUES (?, ?, ?, ?, 'sell', ?)",
+                      (ctx.author.id, item, sell_price, qty, now))
+            
+            sell_rowid = c.lastrowid
             # Profits loggen
             c.execute("""
                 INSERT INTO profits (user_id, profit, timestamp, month, year, item, sell_rowid)
                 VALUES (?, ?, ?, ?, ?, ?, ?)
-            """, (ctx.author.id, profit, now.isoformat(), now.strftime("%Y-%m"), now.strftime("%Y"), item, sell_rowid))
+            """, (ctx.author.id, profit, now, dt_now.strftime("%Y-%m"), dt_now.strftime("%Y"), item, sell_rowid))
+
 
             # Sell_details vullen met originele koper
             for buy_price, used_qty, buy_time in sell_details:
@@ -410,27 +403,28 @@ async def record_sell(ctx, args):
             # Check marge binnen 5 uur
             max_margin = None
             best_buy = None
+            print("sell_details:", sell_details)
             for buy_price, used_qty, buy_time in sell_details:
                 if isinstance(buy_time, str):
                     buy_time = datetime.fromisoformat(buy_time)
-                if (now - buy_time) <= timedelta(hours=5):
-                    margin = actual_sell_price - buy_price
+                if (dt_now - buy_time) <= timedelta(hours=10):
+                    margin = price - buy_price
                     if max_margin is None or margin > max_margin:
                         max_margin = margin
                         best_buy = buy_price
 
-            # DM naar Estibanna
+            # DM sturen naar Estibanna
             if max_margin is not None:
                 try:
                     formatted_buy = format_price(best_buy)
-                    formatted_sell = format_price(actual_sell_price)
+                    formatted_sell = format_price(price)
                     formatted_margin = format_price(max_margin)
 
                     estibanna_id = 285207995221147648
                     estibanna = await bot.fetch_user(estibanna_id)
                     if estibanna:
                         await estibanna.send(
-                            f"📊 `{item}`: {formatted_buy} → {formatted_sell} (+{formatted_margin}) by `{ctx.author.name}`")
+                            f"📊 {item}: {formatted_buy} → {formatted_sell} (+{formatted_margin}) by {ctx.author.name}")
                 except Exception as e:
                     print("[DM ERROR]", e)
 
@@ -440,6 +434,8 @@ async def record_sell(ctx, args):
 
     except Exception as e:
         print("[UNEXPECTED SELL ERROR]", e)
+
+
 
 
 
