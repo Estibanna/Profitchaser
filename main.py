@@ -272,10 +272,17 @@ def parse_price(price_str):
         raise ValueError("❌ Invalid price suffix. Use `k`, `m`, `b`, or `gp`.")
 
 
-
 def parse_item_args(args):
     args = list(args)
-    while args and not args[-1].lower().startswith("x") and not any(c.isdigit() for c in args[-1]):
+
+    # Detecteer of 'p2p' aanwezig is
+    is_p2p = False
+    if args and args[-1].lower() == "p2p":
+        is_p2p = True
+        args.pop()
+
+    # Verwijder eventuele 'x1', 'x3', enz.
+    while args and args[-1].lower().startswith("x") and not any(c.isdigit() for c in args[-1]):
         args.pop()
 
     qty = 1
@@ -287,10 +294,13 @@ def parse_item_args(args):
         price_str = args[-1]
         item_name = " ".join(args[:-1])
 
-    if not re.fullmatch(r"[\d\.]+(b|m|k|gp)", price_str.lower()):
-        raise ValueError("❌ Invalid price. Add a suffix like `k`, `m`, `b`, or `gp` (e.g. `540m`, `2.5k`).")
+    if not re.fullmatch(r"[\d.]+\s*(b|m|k|gp)", price_str.lower()):
+        raise ValueError("❌ Invalid price. Add a suffix like `k`, `m`, `b`, or `gp` (e.g. '540m', '2.5k').")
 
-    return item_name.lower(), parse_price(price_str), qty
+    price = parse_price(price_str)
+
+    return item_name.lower(), price, qty, is_p2p
+
 
 
 
@@ -330,8 +340,9 @@ async def record_sell(ctx, args):
         args = list(args)
         is_p2p = False
         args = [arg for arg in args if not (is_p2p := is_p2p or arg.lower() == "p2p")]
-        item, price, qty = parse_item_args(args)
-        sell_price = price * 0.98 if is_p2p else price
+
+        item, sell_price, qty = parse_item_args(args)
+        actual_sell_price = sell_price if is_p2p else round(sell_price * 0.98)
 
         # Haal bestaande buys op mét timestamp
         c.execute("""
@@ -350,7 +361,7 @@ async def record_sell(ctx, args):
             if remaining == 0:
                 break
             used = min(remaining, buy_qty)
-            profit += (sell_price - buy_price) * used
+            profit += (actual_sell_price - buy_price) * used
             sell_details.append((buy_price, used, buy_time))
             new_qty = buy_qty - used
             if new_qty == 0:
@@ -362,14 +373,15 @@ async def record_sell(ctx, args):
         if qty - remaining > 0:
             now = datetime.now(timezone.utc)
 
-            # Insert verkoop
+            # Insert verkoop (let op: sla originele inputprijs op, niet de aangepaste)
             c.execute("INSERT INTO flips (user_id, item, price, qty, type) VALUES (?, ?, ?, ?, 'sell')",
-                      (ctx.author.id, item, price, qty))
+                      (ctx.author.id, item, sell_price, qty))
+
             c.execute("""
                 SELECT rowid FROM flips 
                 WHERE user_id=? AND item=? AND price=? AND qty=? AND type='sell' 
                 ORDER BY timestamp DESC LIMIT 1
-            """, (ctx.author.id, item, price, qty))
+            """, (ctx.author.id, item, sell_price, qty))
             sell_row = c.fetchone()
             if not sell_row:
                 return await ctx.send("⚠️ Fout bij opslaan verkoop.")
@@ -402,16 +414,16 @@ async def record_sell(ctx, args):
                 if isinstance(buy_time, str):
                     buy_time = datetime.fromisoformat(buy_time)
                 if (now - buy_time) <= timedelta(hours=5):
-                    margin = price - buy_price
+                    margin = actual_sell_price - buy_price
                     if max_margin is None or margin > max_margin:
                         max_margin = margin
                         best_buy = buy_price
 
-            # DM sturen naar Estibanna
+            # DM naar Estibanna
             if max_margin is not None:
                 try:
                     formatted_buy = format_price(best_buy)
-                    formatted_sell = format_price(price)
+                    formatted_sell = format_price(actual_sell_price)
                     formatted_margin = format_price(max_margin)
 
                     estibanna_id = 285207995221147648
@@ -428,6 +440,7 @@ async def record_sell(ctx, args):
 
     except Exception as e:
         print("[UNEXPECTED SELL ERROR]", e)
+
 
 
 
