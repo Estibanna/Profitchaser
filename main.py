@@ -6,7 +6,6 @@ from discord.ext import commands
 import sqlite3
 import os
 from datetime import datetime, timezone
-from decimal import Decimal
 import re
 from datetime import datetime, timezone, timedelta
 def is_mod_or_owner(member):
@@ -165,7 +164,7 @@ async def start(ctx, amount: str):
         conn.commit()
         await ctx.send(f"🏁 Startamount set to **{int(value):,} gp**.")
     except:
-        await ctx.send("❌ Use: `!start 10m` of `!start 250000000GP`")
+        await ctx.send("❌ Use: !start 10m of !start 250000000GP")
 
 
 @bot.command()
@@ -202,7 +201,7 @@ async def saldo(ctx):
 @bot.command()
 async def cost(ctx, *args):
     if len(args) < 2:
-        await ctx.send("❌ Use: `!cost item amount`")
+        await ctx.send("❌ Use: !cost item amount")
         return
     try:
         amount = parse_price(args[-1])
@@ -211,12 +210,12 @@ async def cost(ctx, *args):
         conn.commit()
         await ctx.send(f"💸 Cost added: {item} — {int(amount):,} gp")
     except:
-        await ctx.send("❌ Invalid input. Use: `!cost item 10m`")
+        await ctx.send("❌ Invalid input. Use: !cost item 10m")
 
 @bot.command()
 async def drop(ctx, *args):
     if len(args) < 2:
-        await ctx.send("❌ Use: `!drop item amount`")
+        await ctx.send("❌ Use: !drop item amount")
         return
     try:
         amount = parse_price(args[-1])
@@ -225,7 +224,7 @@ async def drop(ctx, *args):
         conn.commit()
         await ctx.send(f"📦 Drop added: {item} — {int(amount):,} gp")
     except:
-        await ctx.send("❌ Invalid input. Use: `!drop item 10m`")
+        await ctx.send("❌ Invalid input. Use: !drop item 10m")
 
 
 
@@ -253,24 +252,24 @@ async def clear_all_data(ctx):
 
 def parse_price(price_str):
     price_str = price_str.lower().replace(",", "").strip()
+
     match = re.fullmatch(r"([\d\.]+)\s*(b|m|k|gp)", price_str)
     if not match:
-        raise ValueError("❌ Invalid price: add a suffix like `k`, `m`, `b`, or `gp` (e.g. `540m`).")
+        raise ValueError("❌ Invalid price: add a suffix like k, m, b, or gp (e.g. 540m).")
 
     number_str, suffix = match.groups()
-    number = Decimal(number_str)
+    number = float(number_str)
 
     if suffix == "b":
-        return int(number * Decimal("1000000000"))
+        return number * 1_000_000_000
     elif suffix == "m":
-        return int(number * Decimal("1000000"))
+        return number * 1_000_000
     elif suffix == "k":
-        return int(number * Decimal("1000"))
+        return number * 1_000
     elif suffix == "gp":
-        return int(number)
+        return number
     else:
-        raise ValueError("❌ Invalid price suffix. Use `k`, `m`, `b`, or `gp`.")
-
+        raise ValueError("❌ Invalid price suffix. Use k, m, b, or gp.")
 
 
 
@@ -289,7 +288,7 @@ def parse_item_args(args):
         item_name = " ".join(args[:-1])
 
     if not re.fullmatch(r"[\d\.]+(b|m|k|gp)", price_str.lower()):
-        raise ValueError("❌ Invalid price. Add a suffix like `k`, `m`, `b`, or `gp` (e.g. `540m`, `2.5k`).")
+        raise ValueError("❌ Invalid price. Add a suffix like k, m, b, or gp (e.g. 540m, 2.5k).")
 
     return item_name.lower(), parse_price(price_str), qty
 
@@ -311,7 +310,7 @@ async def record_buy(ctx, args):
     except ValueError as ve:
         await ctx.send(str(ve))  # toont fout over ontbrekende suffix
     except Exception as e:
-        await ctx.send(f"❌ Unexpected error: `{type(e).__name__}` – {str(e)}")
+        await ctx.send(f"❌ Unexpected error: {type(e).__name__} – {str(e)}")
         print("[BUY ERROR]", type(e).__name__, e)
 
 
@@ -330,11 +329,9 @@ async def record_sell(ctx, args):
         
         args = list(args)
         is_p2p = False
-        is_p2p = any(arg.lower() == "p2p" for arg in args)
-        clean_args = [arg for arg in args if arg.lower() != "p2p"]
-        item, price, qty = parse_item_args(clean_args)
+        args = [arg for arg in args if not (is_p2p := is_p2p or arg.lower() == "p2p")]
+        item, price, qty = parse_item_args(args)
         sell_price = price if is_p2p else round(price * 0.98)
-
 
         # Haal bestaande buys op mét timestamp
         c.execute("""
@@ -417,7 +414,7 @@ async def record_sell(ctx, args):
                     estibanna = await bot.fetch_user(estibanna_id)
                     if estibanna:
                         await estibanna.send(
-                            f"📊 `{item}`: {formatted_buy} → {formatted_sell} (+{formatted_margin}) by `{ctx.author.name}`")
+                            f"📊 {item}: {formatted_buy} → {formatted_sell} (+{formatted_margin}) by {ctx.author.name}")
                 except Exception as e:
                     print("[DM ERROR]", e)
 
@@ -546,10 +543,10 @@ async def stock(ctx):
             return f"{int(value)}gp"
 
     msg = "**📦 Your inventory:**\n\n"
-    msg += "`{:<18} {:>10} {:>8}`\n".format("Item", "Buy", "Qty")
-    msg += "`{:<18} {:>10} {:>8}`\n".format("─" * 18, "─" * 10, "─" * 8)
+    msg += "{:<18} {:>10} {:>8}\n".format("Item", "Buy", "Qty")
+    msg += "{:<18} {:>10} {:>8}\n".format("─" * 18, "─" * 10, "─" * 8)
     for item, price, qty in rows:
-        msg += "`{:<18} {:>10} {:>8}`\n".format(item[:18].title(), short_price(price), qty)
+        msg += "{:<18} {:>10} {:>8}\n".format(item[:18].title(), short_price(price), qty)
 
     try:
         await ctx.author.send(msg)
@@ -594,9 +591,9 @@ async def profit(ctx, *, item: str):
 
     if total_qty > 0:
         formatted = format_price(total_profit)
-        await ctx.send(f"📈 You have flipped `{total_qty}`x **{item}** with a total profit of **{formatted}**.")
+        await ctx.send(f"📈 You have flipped {total_qty}x **{item}** with a total profit of **{formatted}**.")
     else:
-        await ctx.send(f"❌ No profit data found for `{item}`.")
+        await ctx.send(f"❌ No profit data found for {item}.")
 
 
 
@@ -692,7 +689,7 @@ async def reset(ctx, scope=None):
         rowid, item, amount = last
         c.execute("DELETE FROM costs WHERE rowid=?", (rowid,))
         conn.commit()
-        await ctx.send(f"↩️ Last cost for `{item}` ({int(amount):,} gp) has been removed.")
+        await ctx.send(f"↩️ Last cost for {item} ({int(amount):,} gp) has been removed.")
         return
 
     elif scope == "drop":
@@ -705,7 +702,7 @@ async def reset(ctx, scope=None):
         rowid, item, amount = last
         c.execute("DELETE FROM drops WHERE rowid=?", (rowid,))
         conn.commit()
-        await ctx.send(f"↩️ Last drop for `{item}` ({int(amount):,} gp) has been removed.")
+        await ctx.send(f"↩️ Last drop for {item} ({int(amount):,} gp) has been removed.")
         return
 
     # Laatste flip (buy of sell)
@@ -724,7 +721,7 @@ async def reset(ctx, scope=None):
     if type_ == "buy":
         c.execute("DELETE FROM flips WHERE rowid=?", (rowid,))
         conn.commit()
-        await ctx.send(f"↩️ Last buy of `{item}` has been removed.")
+        await ctx.send(f"↩️ Last buy of {item} has been removed.")
         return
 
     elif type_ == "sell":
@@ -763,7 +760,7 @@ async def reset(ctx, scope=None):
 
         # 5. Commit pas helemaal op het einde
         conn.commit()
-        await ctx.send(f"↩️ Last sell of `{item}` has been undone and {qty}x returned to inventory.")
+        await ctx.send(f"↩️ Last sell of {item} has been undone and {qty}x returned to inventory.")
         return
 
 
@@ -772,14 +769,14 @@ async def reset(ctx, scope=None):
 @bot.command()
 async def delete(ctx, *args):
     if len(args) < 2:
-        await ctx.send("Usage: `!delete <item> x<qty>`")
+        await ctx.send("Usage: !delete <item> x<qty>")
         return
     try:
         if args[-1].lower().startswith("x") and args[-1][1:].isdigit():
             qty = int(args[-1][1:])
             item = " ".join(args[:-1]).lower()
         else:
-            await ctx.send("Quantity missing or invalid. Use: `!delete item x<qty>`")
+            await ctx.send("Quantity missing or invalid. Use: !delete item x<qty>")
             return
 
         c.execute("SELECT rowid, qty FROM flips WHERE user_id=? AND item=? AND type='buy' ORDER BY timestamp",
@@ -857,7 +854,7 @@ async def payed(ctx, *args):
     rows = c.fetchall()
 
     if not rows:
-        await ctx.send(f"❌ No purchases found for `{item}`.")
+        await ctx.send(f"❌ No purchases found for {item}.")
         return
 
     msg = f"📊 You paid for: **{item}**\n"
@@ -1053,7 +1050,7 @@ async def watch(ctx, *args):
         return  # Alleen toegestane users mogen dit
 
     if len(args) < 2:
-        await ctx.send("❌ Usage: `!watch item price` (e.g. `!watch sirenic scale 10m`)")
+        await ctx.send("❌ Usage: !watch item price (e.g. !watch sirenic scale 10m)")
         return
 
     try:
@@ -1062,14 +1059,14 @@ async def watch(ctx, *args):
 
         # Check op geldige eenheid
         if not any(price_str.lower().endswith(suffix) for suffix in ["gp", "k", "m", "b"]):
-            raise ValueError("❌ Invalid price. Use `gp`, `k`, `m`, or `b` at the end.")
+            raise ValueError("❌ Invalid price. Use gp, k, m, or b at the end.")
 
         parsed_price = parse_price(price_str)
 
         c.execute("INSERT INTO watchlist (user_id, item, max_price) VALUES (?, ?, ?)",
                   (ctx.author.id, item, parsed_price))
         conn.commit()
-        await ctx.send(f"🔔 Watching `{item}` for {int(parsed_price):,} gp or less.")
+        await ctx.send(f"🔔 Watching {item} for {int(parsed_price):,} gp or less.")
     except ValueError as ve:
         await ctx.send(str(ve))
     except Exception as e:
@@ -1082,7 +1079,7 @@ async def watch(ctx, *args):
 async def unwatch(ctx, *, item: str):
     c.execute("DELETE FROM watchlist WHERE user_id=? AND item=?", (ctx.author.id, item.lower()))
     conn.commit()
-    await ctx.send(f"❌ Stopped watching `{item}`.")
+    await ctx.send(f"❌ Stopped watching {item}.")
 
 @bot.command()
 async def mywatchlist(ctx):
@@ -1106,56 +1103,56 @@ async def help(ctx):
     )
 
     embed.add_field(name="📥 Buy Commands", value=(
-        "`!nib item price`\n"
-        "`!inb item price x2`\n"
+        "!nib item price\n"
+        "!inb item price x2\n"
         "➤ Add items to your inventory"
     ), inline=False)
 
     embed.add_field(name="💸 Sell Commands", value=(
-        "`!nis item price`\n"
-        "`!ins item price x2`\n"
+        "!nis item price\n"
+        "!ins item price x2\n"
         "➤ Sell items and calculate profit (GE tax)"
     ), inline=False)
 
     embed.add_field(name="📦 Inventory", value=(
-        "`!stock` – Show your current inventory\n"
-        "`!payed item` – Show what you paid for an item"
+        "!stock – Show your current inventory\n"
+        "!payed item – Show what you paid for an item"
     ), inline=False)
 
     embed.add_field(name="🗑️ Delete & Reset", value=(
-        "`!reset` – Undo your last entry\n"
-        "`!reset all` – Delete all flips & profits\n"
-        "`!delete item x2` – Remove items manually\n"
-        "`!removewin` – Remove all your tracked profit"
+        "!reset – Undo your last entry\n"
+        "!reset all – Delete all flips & profits\n"
+        "!delete item x2 – Remove items manually\n"
+        "!removewin – Remove all your tracked profit"
     ), inline=False)
 
     embed.add_field(name="📈 Profit Tracking", value=(
-        "`!day` – Today's profit\n"
-        "`!month` – This month's profit\n"
-        "`!year` – This year's profit"
+        "!day – Today's profit\n"
+        "!month – This month's profit\n"
+        "!year – This year's profit"
     ), inline=False)
 
     embed.add_field(name="🏆 Leaderboard", value=(
-        "`!top` – Top 10 this month\n"
-        "`!top all` – Top 10 all time\n"
-        "`!rank` – Your profit this month\n"
-        "`!rank all` – Your all-time profit"
+        "!top – Top 10 this month\n"
+        "!top all – Top 10 all time\n"
+        "!rank – Your profit this month\n"
+        "!rank all – Your all-time profit"
     ), inline=False)
 
     embed.add_field(name="🪙 Extra Stats", value=(
-        "`!flips` – Total flips\n"
-        "`!avgprofit` – Average profit per flip\n"
-        "`!bestitem` – See your most profitable item\n"
+        "!flips – Total flips\n"
+        "!avgprofit – Average profit per flip\n"
+        "!bestitem – See your most profitable item\n"
     ), inline=False)
 
     embed.add_field(name="🎖️ Ranks", value=(
-        "`!myrank` – Show your rank\n"
-        "`!ranks` – See all rank tiers"
+        "!myrank – Show your rank\n"
+        "!ranks – See all rank tiers"
     ), inline=False)
 
     embed.add_field(name="⚔️ Flip Duel", value=(
-        "`!duel @user` – Start a 3-day profit duel\n"
-        "`!duelscore` – Check your current duel scores"
+        "!duel @user – Start a 3-day profit duel\n"
+        "!duelscore – Check your current duel scores"
     ), inline=False)
 
     
@@ -1212,7 +1209,7 @@ async def fliptoday(ctx):
         elif value >= 1_000:
             return f"{sign}{value / 1_000:.2f}".rstrip("0").rstrip(".") + "k"
         else:
-            return f"{int(value)}gp"
+            return f"{sign}{int(value)}gp"
 
     def short_price(value):
         if value >= 1_000_000:
@@ -1224,38 +1221,27 @@ async def fliptoday(ctx):
 
     total_profit = 0
     lines = []
-
     for item, profit, sell_price, qty, sell_rowid in rows:
         total_profit += profit
-
-        # Bepaal of het een p2p-verkoop was
-        original_price = round(sell_price / 0.98)
-        expected_ge_price = round(original_price * 0.98)
-        is_p2p = abs(sell_price - expected_ge_price) > 2
-        display_sell = sell_price if is_p2p else original_price
-        sell_display = short_price(display_sell) + (" p2p" if is_p2p else "")
-
-        # Haal de gemiddelde aankoopprijs op uit sell_details
         c.execute("""
             SELECT SUM(qty_used), SUM(buy_price * qty_used)
             FROM sell_details
             WHERE sell_rowid = ?
         """, (sell_rowid,))
         result = c.fetchone()
-
         if result and result[0]:
             qty_used, total_buy = result
             avg_buy = total_buy / qty_used
-            lines.append((item.title(), short_price(avg_buy), sell_display, int(qty_used), format_profit(profit)))
+            lines.append((item.title(), short_price(avg_buy), short_price(sell_price / 0.98), int(qty_used), format_profit(profit)))
         else:
-            lines.append((item.title(), "-", sell_display, int(qty), format_profit(profit)))
+            lines.append((item.title(), "-", short_price(sell_price / 0.98), int(qty), format_profit(profit)))
 
-    # Bouw output
+    # Format as table
     msg = "**📊 Flips completed today:**\n\n"
-    msg += "`{:<18} {:>9} {:>13} {:>5} {:>10}`\n".format("Item", "Buy", "Sell", "Qty", "Profit")
-    msg += "`{:<18} {:>9} {:>13} {:>5} {:>10}`\n".format("─"*18, "─"*9, "─"*13, "─"*5, "─"*10)
+    msg += "{:<18} {:>9} {:>9} {:>5} {:>10}\n".format("Item", "Buy", "Sell", "Qty", "Profit")
+    msg += "{:<18} {:>9} {:>9} {:>5} {:>10}\n".format("─"*18, "─"*9, "─"*9, "─"*5, "─"*10)
     for item, buy, sell, qty, profit in lines:
-        msg += "`{:<18} {:>9} {:>13} {:>5} {:>10}`\n".format(item[:18], buy, sell, qty, profit)
+        msg += "{:<18} {:>9} {:>9} {:>5} {:>10}\n".format(item[:18], buy, sell, qty, profit)
 
     msg += f"\n**Total profit today: {format_profit(total_profit)}**"
 
@@ -1264,7 +1250,6 @@ async def fliptoday(ctx):
         await ctx.send("📬 I’ve sent your flips in DM.")
     except discord.Forbidden:
         await ctx.send("❌ I can't DM you. Please enable DMs from server members.")
-
 
 
 @bot.command()
@@ -1283,7 +1268,7 @@ async def modundo(ctx, member: discord.Member, *, item: str):
     sell = c.fetchone()
 
     if not sell:
-        await ctx.send(f"⚠️ No recent sell found for `{item}` from {member.display_name}.")
+        await ctx.send(f"⚠️ No recent sell found for {item} from {member.display_name}.")
         return
 
     sell_rowid, qty = sell
@@ -1311,7 +1296,7 @@ async def modundo(ctx, member: discord.Member, *, item: str):
         c.execute("DELETE FROM profits WHERE rowid=?", (profit[0],))
 
     conn.commit()
-    await ctx.send(f"↩️ Last `{item}` flip from {member.display_name} has been undone.")
+    await ctx.send(f"↩️ Last {item} flip from {member.display_name} has been undone.")
     
 @bot.command()
 async def invested(ctx):
@@ -1419,4 +1404,3 @@ async def debugsell(ctx, rowid: int):
     await ctx.send(msg)
     
 bot.run(TOKEN)
-
