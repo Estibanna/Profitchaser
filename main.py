@@ -6,6 +6,7 @@ from discord.ext import commands
 import sqlite3
 import os
 from datetime import datetime, timezone
+from decimal import Decimal
 import re
 from datetime import datetime, timezone, timedelta
 def is_mod_or_owner(member):
@@ -257,10 +258,6 @@ def parse_price(price_str):
         raise ValueError("❌ Invalid price: add a suffix like `k`, `m`, `b`, or `gp` (e.g. `540m`).")
 
     number_str, suffix = match.groups()
-
-    # Gebruik Decimal voor nauwkeurigheid
-    from decimal import Decimal
-
     number = Decimal(number_str)
 
     if suffix == "b":
@@ -273,6 +270,7 @@ def parse_price(price_str):
         return int(number)
     else:
         raise ValueError("❌ Invalid price suffix. Use `k`, `m`, `b`, or `gp`.")
+
 
 
 
