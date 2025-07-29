@@ -1232,9 +1232,23 @@ async def fliptoday(ctx):
         if result and result[0]:
             qty_used, total_buy = result
             avg_buy = total_buy / qty_used
-            lines.append((item.title(), short_price(avg_buy), short_price(sell_price / 0.98), int(qty_used), format_profit(profit)))
+            # Detecteer p2p als het verschil tussen verkoopprijs en GE-taxed prijs significant is
+            ge_price = round(sell_price * 0.98)
+            is_p2p = abs(sell_price - ge_price) > 1
+            
+            display_sell = sell_price if is_p2p else sell_price / 0.98
+            sell_display = short_price(display_sell) + (" p2p" if is_p2p else "")
+            
+            lines.append((item.title(), short_price(avg_buy), sell_display, int(qty_used), format_profit(profit)))
+
         else:
-            lines.append((item.title(), "-", short_price(sell_price / 0.98), int(qty), format_profit(profit)))
+            ge_price = round(sell_price * 0.98)
+            is_p2p = abs(sell_price - ge_price) > 1
+            display_sell = sell_price if is_p2p else sell_price / 0.98
+            sell_display = short_price(display_sell) + (" p2p" if is_p2p else "")
+            
+            lines.append((item.title(), "-", sell_display, int(qty), format_profit(profit)))
+
 
     # Format as table
     msg = "**📊 Flips completed today:**\n\n"
