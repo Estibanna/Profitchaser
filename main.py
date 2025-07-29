@@ -308,7 +308,7 @@ def parse_item_args(args):
 # Buy handler
 async def record_buy(ctx, args):
     try:
-        item, price, qty = parse_item_args(args)
+        item, price, qty, is_p2p = parse_item_args(args)
         now = datetime.now(timezone.utc)
         c.execute(
             "INSERT INTO flips (user_id, item, price, qty, type, timestamp) VALUES (?, ?, ?, ?, ?, ?)",
