@@ -1268,11 +1268,11 @@ async def fliptoday(ctx):
     # Format mooi als Discord codeblok
     msg = "**📊 Flips completed today:**\n"
     msg += "```"
-    msg += "{:<18} {:>8} {:>10} {:>5} {:>9} {:>4}\n".format("Item", "Buy", "Sell", "Qty", "Profit", "P2P")
-    msg += "-" * 58 + "\n"
-    for item, buy, sell, qty, profit, p2p in lines:
-        msg += "{:<18} {:>8} {:>10} {:>5} {:>9} {:>4}\n".format(item[:18], buy, sell, qty, profit, p2p)
-    msg += "-" * 58 + "\n"
+    msg += "{:<18} {:>8} {:>10} {:>5} {:>9}\n".format("Item", "Buy", "Sell", "Qty", "Profit")
+    msg += "-" * 52 + "\n"
+    for item, buy, sell, qty, profit, _ in lines:
+        msg += "{:<18} {:>8} {:>10} {:>5} {:>9}\n".format(item[:18], buy, sell, qty, profit)
+    msg += "-" * 52 + "\n"
     msg += f"Total profit today: {format_profit(total_profit)}"
     msg += "```"
 
