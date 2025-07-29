@@ -252,22 +252,25 @@ async def clear_all_data(ctx):
 
 def parse_price(price_str):
     price_str = price_str.lower().replace(",", "").strip()
-
     match = re.fullmatch(r"([\d\.]+)\s*(b|m|k|gp)", price_str)
     if not match:
         raise ValueError("❌ Invalid price: add a suffix like `k`, `m`, `b`, or `gp` (e.g. `540m`).")
 
     number_str, suffix = match.groups()
-    number = float(number_str)
+
+    # Gebruik Decimal voor nauwkeurigheid
+    from decimal import Decimal
+
+    number = Decimal(number_str)
 
     if suffix == "b":
-        return number * 1_000_000_000
+        return int(number * Decimal("1000000000"))
     elif suffix == "m":
-        return number * 1_000_000
+        return int(number * Decimal("1000000"))
     elif suffix == "k":
-        return number * 1_000
+        return int(number * Decimal("1000"))
     elif suffix == "gp":
-        return number
+        return int(number)
     else:
         raise ValueError("❌ Invalid price suffix. Use `k`, `m`, `b`, or `gp`.")
 
