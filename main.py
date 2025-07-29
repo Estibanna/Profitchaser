@@ -1221,41 +1221,36 @@ async def fliptoday(ctx):
 
     total_profit = 0
     lines = []
+
     for item, profit, sell_price, qty, sell_rowid in rows:
         total_profit += profit
+
+        # Detecteer of p2p (geen GE tax) werd gebruikt
+        is_p2p = abs(sell_price - round(sell_price * 0.98)) > 2
+        display_sell = sell_price if is_p2p else sell_price / 0.98
+        sell_display = short_price(display_sell) + (" p2p" if is_p2p else "")
+
+        # Probeer avg buy op te halen via sell_details
         c.execute("""
             SELECT SUM(qty_used), SUM(buy_price * qty_used)
             FROM sell_details
             WHERE sell_rowid = ?
         """, (sell_rowid,))
         result = c.fetchone()
+
         if result and result[0]:
             qty_used, total_buy = result
             avg_buy = total_buy / qty_used
-            # Detecteer p2p als het verschil tussen verkoopprijs en GE-taxed prijs significant is
-            ge_price = round(sell_price * 0.98)
-            is_p2p = abs(sell_price - ge_price) > 1
-            
-            display_sell = sell_price if is_p2p else sell_price / 0.98
-            sell_display = short_price(display_sell) + (" p2p" if is_p2p else "")
-            
             lines.append((item.title(), short_price(avg_buy), sell_display, int(qty_used), format_profit(profit)))
-
         else:
-            ge_price = round(sell_price * 0.98)
-            is_p2p = abs(sell_price - ge_price) > 1
-            display_sell = sell_price if is_p2p else sell_price / 0.98
-            sell_display = short_price(display_sell) + (" p2p" if is_p2p else "")
-            
             lines.append((item.title(), "-", sell_display, int(qty), format_profit(profit)))
 
-
-    # Format as table
+    # Bouw tabel
     msg = "**📊 Flips completed today:**\n\n"
-    msg += "`{:<18} {:>9} {:>9} {:>5} {:>10}`\n".format("Item", "Buy", "Sell", "Qty", "Profit")
-    msg += "`{:<18} {:>9} {:>9} {:>5} {:>10}`\n".format("─"*18, "─"*9, "─"*9, "─"*5, "─"*10)
+    msg += "`{:<18} {:>9} {:>13} {:>5} {:>10}`\n".format("Item", "Buy", "Sell", "Qty", "Profit")
+    msg += "`{:<18} {:>9} {:>13} {:>5} {:>10}`\n".format("─"*18, "─"*9, "─"*13, "─"*5, "─"*10)
     for item, buy, sell, qty, profit in lines:
-        msg += "`{:<18} {:>9} {:>9} {:>5} {:>10}`\n".format(item[:18], buy, sell, qty, profit)
+        msg += "`{:<18} {:>9} {:>13} {:>5} {:>10}`\n".format(item[:18], buy, sell, qty, profit)
 
     msg += f"\n**Total profit today: {format_profit(total_profit)}**"
 
@@ -1264,6 +1259,7 @@ async def fliptoday(ctx):
         await ctx.send("📬 I’ve sent your flips in DM.")
     except discord.Forbidden:
         await ctx.send("❌ I can't DM you. Please enable DMs from server members.")
+
 
 
 @bot.command()
