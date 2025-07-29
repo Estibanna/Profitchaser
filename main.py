@@ -1234,9 +1234,11 @@ async def fliptoday(ctx):
         if result and result[0]:
             qty_used, total_buy = result
             avg_buy = total_buy / qty_used
-            lines.append((item.title(), short_price(avg_buy), short_price(sell_price), int(qty_used), format_profit(profit)))
+            lines.append((item.title(), short_price(avg_buy), short_price(sell_price / 0.98), int(qty_used), format_profit(profit)))
+
         else:
-            lines.append((item.title(), "-", short_price(sell_price), int(qty), format_profit(profit)))
+            lines.append((item.title(), "-", short_price(sell_price / 0.98), int(qty), format_profit(profit)))
+
 
     # Format as code block table
     msg = "**📊 Flips completed today:**\n"
