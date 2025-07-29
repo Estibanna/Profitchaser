@@ -1304,10 +1304,12 @@ async def modundo(ctx, member: discord.Member, *, item: str):
 @bot.command()
 async def invested(ctx):
     c.execute("""
-        SELECT item, SUM(qty), SUM(price * qty) 
+        SELECT item, SUM(qty) as total_qty, SUM(price * qty) as total_value
         FROM flips 
         WHERE user_id = ? AND type = 'buy'
         GROUP BY item
+        HAVING total_qty > 0
+        ORDER BY total_value DESC
     """, (ctx.author.id,))
     rows = c.fetchall()
 
@@ -1315,14 +1317,35 @@ async def invested(ctx):
         await ctx.send("📭 You currently have no active investments.")
         return
 
+    def short_price(value):
+        if value >= 1_000_000_000:
+            return f"{value / 1_000_000_000:.2f}".rstrip("0").rstrip(".") + "b"
+        elif value >= 1_000_000:
+            return f"{value / 1_000_000:.2f}".rstrip("0").rstrip(".") + "m"
+        elif value >= 1_000:
+            return f"{value / 1_000:.2f}".rstrip("0").rstrip(".") + "k"
+        else:
+            return f"{int(value)}gp"
+
     total = 0
-    msg = "**💼 Your current investments:**\n"
+    msg = "```"
+    msg += "\n💼 Your current investments:\n\n"
+    msg += "{:<18} {:>6} {:>12}\n".format("Item", "Qty", "Total")
+    msg += "{:<18} {:>6} {:>12}\n".format("─"*18, "─"*6, "─"*12)
+
     for item, qty, subtotal in rows:
         total += subtotal
-        msg += f"• {item} — {int(qty)}x → {int(subtotal):,} gp\n"
+        msg += "{:<18} {:>6} {:>12}\n".format(item[:18].title(), int(qty), short_price(subtotal))
 
-    msg += f"\n💰 **Total invested:** {int(total):,} gp"
-    await ctx.send(msg)
+    msg += "\n{:<18} {:>6} {:>12}".format("Total", "", short_price(total))
+    msg += "\n```"
+
+    try:
+        await ctx.author.send(msg)
+        await ctx.send("📬 I’ve sent your investments in DM.")
+    except discord.Forbidden:
+        await ctx.send("❌ I can't DM you. Please enable DMs from server members.")
+
 
 @bot.command()
 async def costs(ctx):
