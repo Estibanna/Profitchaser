@@ -308,7 +308,7 @@ def parse_item_args(args):
 # Buy handler
 async def record_buy(ctx, args):
     try:
-        item, price, qty, is_p2p = parse_item_args(args)
+        item, price, qty = parse_item_args(args)
         now = datetime.now(timezone.utc)
         c.execute(
             "INSERT INTO flips (user_id, item, price, qty, type, timestamp) VALUES (?, ?, ?, ?, ?, ?)",
@@ -320,7 +320,7 @@ async def record_buy(ctx, args):
     except ValueError as ve:
         await ctx.send(str(ve))  # toont fout over ontbrekende suffix
     except Exception as e:
-        await ctx.send(f"❌ Unexpected error: `{type(e).__name__}` – {str(e)}")
+        await ctx.send(f"❌ Unexpected error: {type(e).__name__} – {str(e)}")
         print("[BUY ERROR]", type(e).__name__, e)
 
 
