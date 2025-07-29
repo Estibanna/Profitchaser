@@ -1189,9 +1189,6 @@ async def bestitem(ctx):
 
 @bot.command()
 async def fliptoday(ctx):
-    if not is_allowed_user(ctx):
-        return
-
     today = datetime.now(timezone.utc).date().isoformat()
     c.execute("""
         SELECT p.item, p.profit, f.price AS sell_price, f.qty, p.sell_rowid
@@ -1203,15 +1200,8 @@ async def fliptoday(ctx):
     rows = c.fetchall()
 
     if not rows:
-        return await ctx.send("📭 You haven't completed any flips today (buy + sell).")
-
-    def short_price(value):
-        if value >= 1_000_000:
-            return f"{value / 1_000_000:.2f}".rstrip("0").rstrip(".") + "m"
-        elif value >= 1_000:
-            return f"{value / 1_000:.2f}".rstrip("0").rstrip(".") + "k"
-        else:
-            return f"{int(value)}gp"
+        await ctx.send("📭 You haven't completed any flips today (buy + sell).")
+        return
 
     def format_profit(value):
         sign = "+" if value >= 0 else "-"
@@ -1223,12 +1213,18 @@ async def fliptoday(ctx):
         else:
             return f"{sign}{int(value)}gp"
 
+    def short_price(value):
+        if value >= 1_000_000:
+            return f"{value / 1_000_000:.2f}".rstrip("0").rstrip(".") + "m"
+        elif value >= 1_000:
+            return f"{value / 1_000:.2f}".rstrip("0").rstrip(".") + "k"
+        else:
+            return f"{int(value)}gp"
+
     total_profit = 0
     lines = []
-
     for item, profit, sell_price, qty, sell_rowid in rows:
         total_profit += profit
-
         c.execute("""
             SELECT SUM(qty_used), SUM(buy_price * qty_used)
             FROM sell_details
@@ -1238,39 +1234,16 @@ async def fliptoday(ctx):
         if result and result[0]:
             qty_used, total_buy = result
             avg_buy = total_buy / qty_used
-
-            ge_taxed = round(sell_price * 0.98)
-            is_p2p = abs(sell_price - ge_taxed) > 1
-            p2p_icon = "✅" if is_p2p else "❌"
-
-            lines.append((
-                item.title(),
-                short_price(avg_buy),
-                short_price(sell_price),
-                int(qty_used),
-                format_profit(profit),
-                p2p_icon
-            ))
+            lines.append((item.title(), short_price(avg_buy), short_price(sell_price), int(qty_used), format_profit(profit)))
         else:
-            ge_taxed = round(sell_price * 0.98)
-            is_p2p = abs(sell_price - ge_taxed) > 1
-            p2p_icon = "✅" if is_p2p else "❌"
+            lines.append((item.title(), "-", short_price(sell_price), int(qty), format_profit(profit)))
 
-            lines.append((
-                item.title(),
-                "-",
-                short_price(sell_price),
-                int(qty),
-                format_profit(profit),
-                p2p_icon
-            ))
-
-    # Format mooi als Discord codeblok
+    # Format as code block table
     msg = "**📊 Flips completed today:**\n"
     msg += "```"
     msg += "{:<18} {:>8} {:>10} {:>5} {:>9}\n".format("Item", "Buy", "Sell", "Qty", "Profit")
     msg += "-" * 52 + "\n"
-    for item, buy, sell, qty, profit, _ in lines:
+    for item, buy, sell, qty, profit in lines:
         msg += "{:<18} {:>8} {:>10} {:>5} {:>9}\n".format(item[:18], buy, sell, qty, profit)
     msg += "-" * 52 + "\n"
     msg += f"Total profit today: {format_profit(total_profit)}"
@@ -1281,6 +1254,7 @@ async def fliptoday(ctx):
         await ctx.send("📬 I’ve sent your flips in DM.")
     except discord.Forbidden:
         await ctx.send("❌ I can't DM you. Please enable DMs from server members.")
+
 
 
 @bot.command()
