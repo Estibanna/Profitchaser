@@ -1231,28 +1231,25 @@ async def fliptoday(ctx):
             WHERE sell_rowid = ?
         """, (sell_rowid,))
         result = c.fetchone()
-        c.execute("SELECT is_p2p FROM flips WHERE rowid = ?", (sell_rowid,))
-        is_p2p = c.fetchone()
-        is_p2p = is_p2p and is_p2p[0] == 1
-
-        # Bereken originele verkoopprijs als het geen p2p was
-        display_sell_price = sell_price if is_p2p else sell_price / 0.98
-
         if result and result[0]:
             qty_used, total_buy = result
             avg_buy = total_buy / qty_used
-            lines.append((item.title(), short_price(avg_buy), short_price(display_sell_price), int(qty_used), format_profit(profit)))
+            lines.append((item.title(), short_price(avg_buy), short_price(sell_price / 0.98), int(qty_used), format_profit(profit)))
+
         else:
-            lines.append((item.title(), "-", short_price(display_sell_price), int(qty), format_profit(profit)))
+            lines.append((item.title(), "-", short_price(sell_price / 0.98), int(qty), format_profit(profit)))
 
-    # Format als nette Discord-tabel
-    msg = "**📊 Flips completed today:**\n\n"
-    msg += "`{:<18} {:>9} {:>9} {:>5} {:>10}`\n".format("Item", "Buy", "Sell", "Qty", "Profit")
-    msg += "`{:<18} {:>9} {:>9} {:>5} {:>10}`\n".format("─"*18, "─"*9, "─"*9, "─"*5, "─"*10)
+
+    # Format as code block table
+    msg = "**📊 Flips completed today:**\n"
+    msg += "```"
+    msg += "{:<18} {:>8} {:>10} {:>5} {:>9}\n".format("Item", "Buy", "Sell", "Qty", "Profit")
+    msg += "-" * 52 + "\n"
     for item, buy, sell, qty, profit in lines:
-        msg += "`{:<18} {:>9} {:>9} {:>5} {:>10}`\n".format(item[:18], buy, sell, qty, profit)
-
-    msg += f"\n**Total profit today: {format_profit(total_profit)}**"
+        msg += "{:<18} {:>8} {:>10} {:>5} {:>9}\n".format(item[:18], buy, sell, qty, profit)
+    msg += "-" * 52 + "\n"
+    msg += f"Total profit today: {format_profit(total_profit)}"
+    msg += "```"
 
     try:
         await ctx.author.send(msg)
