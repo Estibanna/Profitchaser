@@ -1209,7 +1209,7 @@ async def fliptoday(ctx):
         elif value >= 1_000:
             return f"{sign}{value / 1_000:.2f}".rstrip("0").rstrip(".") + "k"
         else:
-            return f"{sign}{int(value)}gp"
+            return f"{int(value)}gp"
 
     def short_price(value):
         if value >= 1_000_000:
@@ -1225,12 +1225,14 @@ async def fliptoday(ctx):
     for item, profit, sell_price, qty, sell_rowid in rows:
         total_profit += profit
 
-        # Detecteer of p2p (geen GE tax) werd gebruikt
-        is_p2p = abs(sell_price - round(sell_price * 0.98)) > 2
-        display_sell = sell_price if is_p2p else sell_price / 0.98
+        # Bepaal of het een p2p-verkoop was
+        original_price = round(sell_price / 0.98)
+        expected_ge_price = round(original_price * 0.98)
+        is_p2p = abs(sell_price - expected_ge_price) > 2
+        display_sell = sell_price if is_p2p else original_price
         sell_display = short_price(display_sell) + (" p2p" if is_p2p else "")
 
-        # Probeer avg buy op te halen via sell_details
+        # Haal de gemiddelde aankoopprijs op uit sell_details
         c.execute("""
             SELECT SUM(qty_used), SUM(buy_price * qty_used)
             FROM sell_details
@@ -1245,7 +1247,7 @@ async def fliptoday(ctx):
         else:
             lines.append((item.title(), "-", sell_display, int(qty), format_profit(profit)))
 
-    # Bouw tabel
+    # Bouw output
     msg = "**📊 Flips completed today:**\n\n"
     msg += "`{:<18} {:>9} {:>13} {:>5} {:>10}`\n".format("Item", "Buy", "Sell", "Qty", "Profit")
     msg += "`{:<18} {:>9} {:>13} {:>5} {:>10}`\n".format("─"*18, "─"*9, "─"*13, "─"*5, "─"*10)
