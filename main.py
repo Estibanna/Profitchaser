@@ -518,7 +518,6 @@ def is_allowed_user(ctx):
 
 
 
-
 @bot.command()
 async def stock(ctx):
     c.execute("""
@@ -542,22 +541,23 @@ async def stock(ctx):
         else:
             return f"{int(value)}gp"
 
-    # Bouw tabel op
-    msg = "**📦 Your inventory:**\n"
-    msg += "```"
-    msg += f"{'Item':<22} {'Buy':>9} {'Qty':>5}\n"
-    msg += f"{'-'*22} {'-'*9} {'-'*5}\n"
+    # Tabelkop
+    header = f"{'Item':<20} {'Buy':>8} {'Qty':>5}\n"
+    separator = f"{'-'*20} {'-'*8} {'-'*5}\n"
 
+    rows_formatted = ""
     for item, price, qty in rows:
-        item_name = item[:22].title()
+        item_str = item[:20].title()
         price_str = short_price(price)
-        msg += f"{item_name:<22} {price_str:>9} {qty:>5}\n"
+        rows_formatted += f"{item_str:<20} {price_str:>8} {qty:>5}\n"
 
-    msg += "```"
+    # Bouw message in chunks
+    full_message = "**📦 Your inventory:**\n"
+    content = "```" + header + separator + rows_formatted + "```"
 
     try:
-        for i in range(0, len(msg), 1900):
-            await ctx.author.send(msg[i:i+1900])
+        for i in range(0, len(content), 1900):
+            await ctx.author.send(content[i:i+1900])
         await ctx.send("📬 I’ve sent your inventory in DM.")
     except discord.Forbidden:
         await ctx.send("❌ I can't DM you. Please enable DMs from server members.")
