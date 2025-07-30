@@ -517,7 +517,6 @@ def is_allowed_user(ctx):
     )
 
 
-
 @bot.command()
 async def stock(ctx):
     c.execute("""
@@ -551,16 +550,17 @@ async def stock(ctx):
         price_str = short_price(price)
         rows_formatted += f"{item_str:<20} {price_str:>8} {qty:>5}\n"
 
-    # Bouw message in chunks
-    full_message = "**📦 Your inventory:**\n"
+    # Bouw bericht
     content = "```" + header + separator + rows_formatted + "```"
+    full_message = "**📦 Your inventory:**\n" + content
 
     try:
-        for i in range(0, len(content), 1900):
-            await ctx.author.send(content[i:i+1900])
+        for i in range(0, len(full_message), 1900):
+            await ctx.author.send(full_message[i:i+1900])
         await ctx.send("📬 I’ve sent your inventory in DM.")
     except discord.Forbidden:
         await ctx.send("❌ I can't DM you. Please enable DMs from server members.")
+
 
 
 
