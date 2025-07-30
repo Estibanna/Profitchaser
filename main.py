@@ -542,22 +542,26 @@ async def stock(ctx):
         else:
             return f"{int(value)}gp"
 
-    # Format the table
+    # Bouw tabel op
     msg = "**📦 Your inventory:**\n"
     msg += "```"
-    msg += "{:<20} {:>10} {:>6}\n".format("Item", "Buy", "Qty")
-    msg += "{:<20} {:>10} {:>6}\n".format("─" * 20, "─" * 10, "─" * 6)
+    msg += f"{'Item':<22} {'Buy':>9} {'Qty':>5}\n"
+    msg += f"{'-'*22} {'-'*9} {'-'*5}\n"
+
     for item, price, qty in rows:
-        msg += "{:<20} {:>10} {:>6}\n".format(item[:20].title(), short_price(price), qty)
+        item_name = item[:22].title()
+        price_str = short_price(price)
+        msg += f"{item_name:<22} {price_str:>9} {qty:>5}\n"
+
     msg += "```"
 
     try:
-        # Verstuur in stukken van max 1900 karakters
         for i in range(0, len(msg), 1900):
             await ctx.author.send(msg[i:i+1900])
         await ctx.send("📬 I’ve sent your inventory in DM.")
     except discord.Forbidden:
         await ctx.send("❌ I can't DM you. Please enable DMs from server members.")
+
 
 
 
