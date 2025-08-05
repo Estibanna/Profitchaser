@@ -469,12 +469,9 @@ async def on_ready():
         
      
 
-
 def is_allowed_user(ctx):
-    return (
-        ctx.guild or
-        (isinstance(ctx.channel, discord.DMChannel) and ctx.author.name.lower() in ALLOWED_DM_USERS)
-    )
+    return True  # Iedereen toegestaan, ook in DM
+    
 @bot.command()
 async def nib(ctx, *args):
     if not is_allowed_user(ctx):
