@@ -24,19 +24,8 @@ def is_allowed_guild(ctx):
 
 
 
-DUELS_FILE = "data/duels.json"
 
-def load_duels():
-    if os.path.exists(DUELS_FILE):
-        with open(DUELS_FILE, "r") as f:
-            data = json.load(f)
-            return {tuple(map(int, k.split(","))): datetime.fromisoformat(v) for k, v in data.items()}
-    return {}
 
-def save_duels():
-    with open(DUELS_FILE, "w") as f:
-        data = {f"{k[0]},{k[1]}": v.isoformat() for k, v in active_duels.items()}
-        json.dump(data, f)
 
 # Stup
 TOKEN = os.getenv("TOKEN")
@@ -46,7 +35,7 @@ intents.members = True
 bot = commands.Bot(command_prefix="!", intents=intents)
 
 bot.remove_command('help')
-active_duels = {}  # Dict met (user1_id, user2_id): start_time
+
 # Ensure data folder exists
 os.makedirs("data", exist_ok=True)
 volume_path = "/app/data/flips.db" if os.getenv("RAILWAY_ENVIRONMENT") else "data/flips.db"
@@ -242,8 +231,7 @@ async def clear_all_data(ctx):
 
     # Wis .json-bestanden
 
-    with open("data/duels.json", "w") as f:
-        json.dump({}, f)
+
 
     await ctx.send("🧹 All data has been wiped.")
 
@@ -461,38 +449,27 @@ def get_flipper_rank(total_profit):
 @bot.event
 async def on_ready():
     print(f"✅ Logged in as {bot.user}")
-    global active_duels
-    active_duels = load_duels()
+   
     
         
      
 
-def is_allowed_user(ctx):
-    return True  # Iedereen toegestaan, ook in DM
-    
 @bot.command()
 async def nib(ctx, *args):
-    if not is_allowed_user(ctx):
-        return
     await record_buy(ctx, args)
 
 @bot.command()
 async def inb(ctx, *args):
-    if not is_allowed_user(ctx):
-        return
     await record_buy(ctx, args)
 
 @bot.command()
 async def nis(ctx, *args):
-    if not is_allowed_user(ctx):
-        return
     await record_sell(ctx, args)
 
 @bot.command()
 async def ins(ctx, *args):
-    if not is_allowed_user(ctx):
-        return
     await record_sell(ctx, args)
+
 
 
 
@@ -951,101 +928,6 @@ async def flips(ctx):
 
 
 
-
-
-@bot.command()
-async def duel(ctx, opponent: discord.Member):
-    user1 = ctx.author.id
-    user2 = opponent.id
-
-    if user1 == user2:
-        await ctx.send("⚠️ You can't duel yourself.")
-        return
-
-    key = tuple(sorted((user1, user2)))
-
-    if key in active_duels:
-        await ctx.send("⚔️ A duel between you two is already ongoing.")
-        return
-
-    start_time = datetime.now(timezone.utc)
-    active_duels[key] = start_time
-    save_duels()  # Save after starting a duel
-
-    await ctx.send(f"🏁 Duel started between <@{user1}> and <@{user2}>! Ends in 24h.")
-
-
-@bot.command()
-async def duelscore(ctx, opponent: discord.Member):
-    user1 = ctx.author.id
-    user2 = opponent.id
-    key = tuple(sorted((user1, user2)))
-
-    if key not in active_duels:
-        await ctx.send("❌ No active duel found between you two.")
-        return
-
-    start_time = active_duels[key]
-    now = datetime.now(timezone.utc)
-
-    # Check if the duel has expired
-    if now > start_time + timedelta(days=1):
-        # Fetch scores
-        c.execute("""
-            SELECT user_id, SUM(profit) FROM profits
-            WHERE (user_id = ? OR user_id = ?) AND timestamp >= ?
-            GROUP BY user_id
-        """, (user1, user2, start_time.isoformat()))
-        rows = c.fetchall()
-
-        scores = {user1: 0, user2: 0}
-        for uid, total in rows:
-            scores[uid] = total
-
-        winner = None
-        if scores[user1] > scores[user2]:
-            winner = user1
-        elif scores[user2] > scores[user1]:
-            winner = user2
-
-        # End the duel
-        del active_duels[key]
-
-        # Find the #bot-talk channel
-        bot_talk_channel = discord.utils.get(ctx.guild.text_channels, name="💬bot-talk")
-        if bot_talk_channel:
-            if winner:
-                await bot_talk_channel.send(
-                    f"🏆 The duel between <@{user1}> and <@{user2}> has ended!\n"
-                    f"🎉 <@{winner}> wins with {scores[winner]:,.0f} gp!"
-                )
-            else:
-                await bot_talk_channel.send(
-                    f"🤝 The duel between <@{user1}> and <@{user2}> ended in a tie!"
-                )
-        else:
-            await ctx.send("⚠️ Could not find the #bot-talk channel to announce the winner.")
-
-        await ctx.send("⏰ The duel has expired and is now over.")
-        return
-
-    # Duel is still active
-    c.execute("""
-        SELECT user_id, SUM(profit) FROM profits
-        WHERE (user_id = ? OR user_id = ?) AND timestamp >= ?
-        GROUP BY user_id
-    """, (user1, user2, start_time.isoformat()))
-    rows = c.fetchall()
-
-    scores = {user1: 0, user2: 0}
-    for uid, total in rows:
-        scores[uid] = total
-
-    await ctx.send(
-        f"📊 Duel score (still ongoing):\n"
-        f"<@{user1}>: {scores[user1]:,.0f} gp\n"
-        f"<@{user2}>: {scores[user2]:,.0f} gp"
-    )
 
 
 
