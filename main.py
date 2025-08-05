@@ -508,28 +508,26 @@ async def stock(ctx):
         else:
             return f"{int(value)}gp"
 
-    # Tabelkop
-    header = f"{'Item':<20} {'Buy':>8} {'Qty':>5}\n"
-    separator = f"{'-'*20} {'-'*8} {'-'*5}\n"
+    # Structuur voor Discord-bericht
+    header = "**📦 Your inventory:**"
+    table = "{:<20} {:>8} {:>5}\n".format("Item", "Buy", "Qty")
+    table += "-"*20 + " " + "-"*8 + " " + "-"*5 + "\n"
 
-    rows_formatted = ""
     for item, price, qty in rows:
         item_str = item[:20].title()
         price_str = short_price(price)
-        rows_formatted += f"{item_str:<20} {price_str:>8} {qty:>5}\n"
-
-    # Bouw bericht
-    content = "```" + header + separator + rows_formatted + "```"
-    full_message = "**📦 Your inventory:**\n" + content
+        table += "{:<20} {:>8} {:>5}\n".format(item_str, price_str, qty)
 
     try:
-        chunks = [msg[i:i+1800] for i in range(0, len(msg), 1800)]
+        await ctx.author.send(header)
+        chunks = [table[i:i+1800] for i in range(0, len(table), 1800)]
         for chunk in chunks:
-            await ctx.author.send("```" + chunk + "```")
+            await ctx.author.send(f"```{chunk}```")
 
         await ctx.send("📬 I’ve sent your inventory in DM.")
     except discord.Forbidden:
         await ctx.send("❌ I can't DM you. Please enable DMs from server members.")
+
 
 
 
