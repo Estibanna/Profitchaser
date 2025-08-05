@@ -483,11 +483,7 @@ def format_price(value):
         return f"{int(value)}gp"    
 
 def is_allowed_user(ctx):
-    return (
-        (ctx.guild and is_allowed_guild(ctx)) or
-        (isinstance(ctx.channel, discord.DMChannel) and ctx.author.name.lower() == "estibanna")
-    )
-
+    return True
 
 @bot.command()
 async def stock(ctx):
