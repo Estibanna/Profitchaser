@@ -17,10 +17,7 @@ ALLOWED_GUILD_IDS = [1334260436098355250, 1397853269971304468]
 def is_allowed_guild(ctx):
     return ctx.guild and ctx.guild.id in ALLOWED_GUILD_IDS
     
-ALLOWED_DM_USERS = {"sdw2003", "estibanna"}
-user_track_requests = {}
-def is_allowed_dm_user(ctx):
-    return isinstance(ctx.channel, discord.DMChannel) and ctx.author.name.lower() in ALLOWED_DM_USERS
+
 
 
 
