@@ -1124,26 +1124,27 @@ async def fliptoday(ctx):
 
 
     # Format as code block table
-    msg = "**📊 Flips completed today:**\n"
-    msg += "```"
-    msg += "{:<18} {:>8} {:>10} {:>5} {:>9}\n".format("Item", "Buy", "Sell", "Qty", "Profit")
-    msg += "-" * 52 + "\n"
+    header = "**📊 Flips completed today:**"
+    table = ""
+    table += "{:<18} {:>8} {:>10} {:>5} {:>9}\n".format("Item", "Buy", "Sell", "Qty", "Profit")
+    table += "-" * 52 + "\n"
     for item, buy, sell, qty, profit in lines:
-        msg += "{:<18} {:>8} {:>10} {:>5} {:>9}\n".format(item[:18], buy, sell, qty, profit)
-    msg += "-" * 52 + "\n"
-    msg += f"Total profit today: {format_profit(total_profit)}"
-    msg += "```"
+        table += "{:<18} {:>8} {:>10} {:>5} {:>9}\n".format(item[:18], buy, sell, qty, profit)
+    table += "-" * 52 + "\n"
+    table += f"Total profit today: {format_profit(total_profit)}"
+
 
     try:
-        chunks = [msg[i:i+1800] for i in range(0, len(msg), 1800)]
+        await ctx.author.send(header)  # aparte DM voor titel
+        chunks = [table[i:i+1800] for i in range(0, len(table), 1800)]
         for chunk in chunks:
-            await ctx.author.send("```" + chunk + "```")
-
+            await ctx.author.send(f"```{chunk}```")
+    
         await ctx.send("📬 I’ve sent your flips in DM.")
     except discord.Forbidden:
         await ctx.send("❌ I can't DM you. Please enable DMs from server members.")
-
-
+    
+    
 
 
 @bot.command()
