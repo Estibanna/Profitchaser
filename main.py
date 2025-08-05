@@ -1133,10 +1133,12 @@ async def fliptoday(ctx):
     msg += "```"
 
     try:
-        await ctx.author.send(msg)
+        for i in range(0, len(msg), 1900):
+            await ctx.author.send(msg[i:i+1900])
         await ctx.send("📬 I’ve sent your flips in DM.")
     except discord.Forbidden:
         await ctx.send("❌ I can't DM you. Please enable DMs from server members.")
+
 
 
 
