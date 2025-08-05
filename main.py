@@ -14,8 +14,9 @@ def is_mod_or_owner(member):
 ALLOWED_WATCH_USERS = {"estibanna", "noltie"}  # usernames in kleine letters
 ALLOWED_GUILD_IDS = [1334260436098355250, 1397853269971304468]
 
+
 def is_allowed_guild(ctx):
-    return ctx.guild and ctx.guild.id in ALLOWED_GUILD_IDS
+    return ctx.guild is not None and ctx.guild.id in ALLOWED_GUILD_IDS
     
 
 
