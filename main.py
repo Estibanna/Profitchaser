@@ -1123,24 +1123,32 @@ async def fliptoday(ctx):
 
     # Format as code block table
     header = "**📊 Flips completed today:**"
-    table = ""
-    table += "{:<18} {:>8} {:>10} {:>5} {:>9}\n".format("Item", "Buy", "Sell", "Qty", "Profit")
-    table += "-" * 52 + "\n"
+    table_header = "{:<18} {:>8} {:>10} {:>5} {:>9}\n".format("Item", "Buy", "Sell", "Qty", "Profit")
+    table_sep = "-" * 52 + "\n"
+    
+    # Zet elke regel als string in een lijst
+    lines_formatted = []
     for item, buy, sell, qty, profit in lines:
-        table += "{:<18} {:>8} {:>10} {:>5} {:>9}\n".format(item[:18], buy, sell, qty, profit)
-    table += "-" * 52 + "\n"
-    table += f"Total profit today: {format_profit(total_profit)}"
-
-
+        lines_formatted.append("{:<18} {:>8} {:>10} {:>5} {:>9}".format(item[:18], buy, sell, qty, profit))
+    
+    # Splits per 25 regels (of minder indien laatste)
+    chunk_size = 25
+    chunks = [lines_formatted[i:i+chunk_size] for i in range(0, len(lines_formatted), chunk_size)]
+    
     try:
-        await ctx.author.send(header)  # aparte DM voor titel
-        chunks = [table[i:i+1800] for i in range(0, len(table), 1800)]
+        await ctx.author.send(header)
         for chunk in chunks:
-            await ctx.author.send(f"```{chunk}```")
+            block = table_header + table_sep
+            block += "\n".join(chunk) + "\n"
+            if chunk == chunks[-1]:  # laatste blok → total profit toevoegen
+                block += "-" * 52 + "\n"
+                block += f"Total profit today: {format_profit(total_profit)}"
+            await ctx.author.send(f"```{block}```")
     
         await ctx.send("📬 I’ve sent your flips in DM.")
     except discord.Forbidden:
         await ctx.send("❌ I can't DM you. Please enable DMs from server members.")
+
     
     
 
