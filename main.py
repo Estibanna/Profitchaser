@@ -1065,6 +1065,39 @@ async def bestitem(ctx):
     else:
         await ctx.send("❌ You have no flip data yet.")
 
+@bot.command()
+async def weekly(ctx):
+    today = datetime.now(timezone.utc).date()
+    dates = [(today - timedelta(days=i)) for i in reversed(range(7))]
+
+    lines = []
+    total_weekly_profit = 0
+
+    for date in dates:
+        c.execute("""
+            SELECT SUM(profit)
+            FROM profits
+            WHERE user_id = ? AND DATE(timestamp) = ?
+        """, (ctx.author.id, date.isoformat()))
+        daily_profit = c.fetchone()[0] or 0
+        total_weekly_profit += daily_profit
+        lines.append((date.strftime("%a %d %b"), daily_profit))
+
+    # Bouw de tabel op
+    header = "**🗓️ Your last 7 days of flipping profits:**"
+    table = "{:<12} {:>12}\n".format("Date", "Profit")
+    table += "-" * 25 + "\n"
+    for date_str, profit in lines:
+        table += "{:<12} {:>12,} gp\n".format(date_str, int(profit))
+    table += "-" * 25 + "\n"
+    table += "{:<12} {:>12,} gp".format("Total", int(total_weekly_profit))
+
+    try:
+        await ctx.author.send(header)
+        await ctx.author.send(f"```{table}```")
+        await ctx.send("📬 I’ve sent your weekly profits in DM.")
+    except discord.Forbidden:
+        await ctx.send("❌ I can't DM you. Please enable DMs from server members.")
 
 
 
