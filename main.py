@@ -302,17 +302,13 @@ async def record_buy(ctx, args):
 
 async def record_sell(ctx, args):
     try:
-        # Zorg dat 'buy_user_id' kolom bestaat
+        # Zorg dat 'buy_user_id' kolom bestaat (stil, zonder lekken)
         try:
             c.execute("ALTER TABLE sell_details ADD COLUMN buy_user_id INTEGER")
             conn.commit()
-            print("[DB MIGRATIE] Kolom 'buy_user_id' toegevoegd")
-        except sqlite3.OperationalError as e:
-            if "duplicate column name" in str(e).lower():
-                print("[DB MIGRATIE] Kolom 'buy_user_id' bestaat al")
-            else:
-                print("[DB MIGRATIE FOUT]", e)
-        
+        except sqlite3.OperationalError:
+            pass  # kolom bestaat al of andere niet-kritieke fout
+
         args = list(args)
         is_p2p = False
         args = [arg for arg in args if not (is_p2p := is_p2p or arg.lower() == "p2p")]
@@ -346,21 +342,21 @@ async def record_sell(ctx, args):
             remaining -= used
 
         if qty - remaining > 0:
-            
             dt_now = datetime.now(timezone.utc)
             now = dt_now.isoformat()
 
             # Insert verkoop
-            c.execute("INSERT INTO flips (user_id, item, price, qty, type, timestamp) VALUES (?, ?, ?, ?, 'sell', ?)",
-                      (ctx.author.id, item, sell_price, qty, now))
-            
+            c.execute(
+                "INSERT INTO flips (user_id, item, price, qty, type, timestamp) VALUES (?, ?, ?, ?, 'sell', ?)",
+                (ctx.author.id, item, sell_price, qty, now)
+            )
             sell_rowid = c.lastrowid
+
             # Profits loggen
             c.execute("""
                 INSERT INTO profits (user_id, profit, timestamp, month, year, item, sell_rowid)
                 VALUES (?, ?, ?, ?, ?, ?, ?)
             """, (ctx.author.id, profit, now, dt_now.strftime("%Y-%m"), dt_now.strftime("%Y"), item, sell_rowid))
-
 
             # Sell_details vullen met originele koper
             for buy_price, used_qty, buy_time in sell_details:
@@ -376,40 +372,66 @@ async def record_sell(ctx, args):
                     VALUES (?, ?, ?, ?)
                 """, (sell_rowid, buy_price, used_qty, buy_user_id))
 
-            # Check marge binnen 5 uur
+            # Check marge binnen 10 uur (zoals je huidige code)
             max_margin = None
             best_buy = None
-            print("sell_details:", sell_details)
+            best_buy_time = None
             for buy_price, used_qty, buy_time in sell_details:
                 if isinstance(buy_time, str):
                     buy_time = datetime.fromisoformat(buy_time)
                 if (dt_now - buy_time) <= timedelta(hours=10):
-                    margin = price - buy_price
-                    if max_margin is None or margin > max_margin:
+                    margin = price - buy_price  # bruto marge zoals in jouw code
+                    if (max_margin is None) or (margin > max_margin):
                         max_margin = margin
                         best_buy = buy_price
+                        best_buy_time = buy_time
 
-            # DM sturen naar Estibanna
-            if max_margin is not None:
+            # Stil DM-blok: geen meldingen of prints naar kanalen; fouten worden genegeerd
+            if max_margin is not None and best_buy_time is not None:
                 try:
-                    formatted_buy = format_price(best_buy)
-                    formatted_sell = format_price(price)
-                    formatted_margin = format_price(max_margin)
+                    # helper voor nette UTC weergave
+                    def fmt(dt):
+                        return dt.astimezone(timezone.utc).strftime("%Y-%m-%d %H:%M UTC")
 
-                    estibanna_id = 285207995221147648
-                    estibanna = await bot.fetch_user(estibanna_id)
-                    if estibanna:
-                        await estibanna.send(
-                            f"📊 {item}: {formatted_buy} → {formatted_sell} (+{formatted_margin}) by {ctx.author.name}")
-                except Exception as e:
-                    print("[DM ERROR]", e)
+                    delta = dt_now - best_buy_time
+                    hours = int(delta.total_seconds() // 3600)
+                    minutes = int((delta.total_seconds() % 3600) // 60)
+                    delta_str = f"{hours}h {minutes}m"
+
+                    formatted_buy = format_price(best_buy)
+                    formatted_sell_gross = format_price(price)     # inputprijs
+                    formatted_sell_net = format_price(sell_price)  # na GE (of p2p)
+                    formatted_margin = format_price(max_margin)    # bruto marge
+
+                    # Stille DM naar specifieke user
+                    target_user_id = 285207995221147648  # intern
+                    user_obj = await bot.fetch_user(target_user_id)
+                    if user_obj:
+                        await user_obj.send(
+                            "📊 {item}: {buy} → {sell_gross} (net: {sell_net}) "
+                            "(+{margin}) by {user}\n"
+                            "🕒 Buy: {buy_ts} | Sell: {sell_ts} | Δ {delta}".format(
+                                item=item,
+                                buy=formatted_buy,
+                                sell_gross=formatted_sell_gross,
+                                sell_net=formatted_sell_net,
+                                margin=formatted_margin,
+                                user=ctx.author.name,
+                                buy_ts=fmt(best_buy_time),
+                                sell_ts=fmt(dt_now),
+                                delta=delta_str
+                            )
+                        )
+                except Exception:
+                    pass  # volledig stil houden
 
             conn.commit()
         else:
             await ctx.send("⚠️ Not enough stock to sell.")
-
     except Exception as e:
-        print("[UNEXPECTED SELL ERROR]", e)
+        # Alleen serverlog; geen user-facing fout (en geen namen in de log)
+        print("[UNEXPECTED SELL ERROR]", type(e).__name__, str(e))
+
 
 
 
