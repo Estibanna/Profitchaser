@@ -1,5 +1,8 @@
 # original
 from zoneinfo import ZoneInfo  # bovenaan je bestand
+# === Helpers ===
+
+
 from discord.ext import tasks
 import json
 import discord
@@ -374,68 +377,69 @@ async def record_sell(ctx, args):
                 """, (sell_rowid, buy_price, used_qty, buy_user_id))
 
             # Check marge binnen 10 uur (zoals je huidige code)
-            max_margin = None
-            best_buy = None
-            best_buy_time = None
-            for buy_price, used_qty, buy_time in sell_details:
-                if isinstance(buy_time, str):
-                    buy_time = datetime.fromisoformat(buy_time)
-                if (dt_now - buy_time) <= timedelta(hours=10):
-                    margin = price - buy_price  # bruto marge zoals in jouw code
-                    if (max_margin is None) or (margin > max_margin):
-                        max_margin = margin
-                        best_buy = buy_price
-                        best_buy_time = buy_time
+            def parse_dt(dt_val):
+    """Maak datetime tz-aware (UTC) en accepteer ISO-strings."""
+    if isinstance(dt_val, str):
+        dt_val = datetime.fromisoformat(dt_val.replace("Z", "+00:00"))
+    if dt_val.tzinfo is None:
+        dt_val = dt_val.replace(tzinfo=timezone.utc)
+    return dt_val
 
+# Check marge binnen 10 uur (zoals je huidige code), tz-aware
+max_margin = None
+best_buy = None
+best_buy_time = None
+for buy_price, used_qty, buy_time in sell_details:
+    bt = parse_dt(buy_time)
+    if (dt_now - bt) <= timedelta(hours=10):
+        margin = price - buy_price  # bruto marge per stuk (voor vergelijking)
+        if (max_margin is None) or (margin > max_margin):
+            max_margin = margin
+            best_buy = buy_price
+            best_buy_time = bt
 
-           
-            # Stil DM-blok: geen meldingen of prints naar kanalen; fouten worden genegeerd
-            if max_margin is not None and best_buy_time is not None:
-                try:
-                    # helper voor nette lokale weergave
-                    def fmt(dt):
-                        tz = ZoneInfo("Europe/Brussels")
-                        return dt.astimezone(tz).strftime("%d/%m %H:%M")
-            
-                    delta = dt_now - best_buy_time
-                    hours = int(delta.total_seconds() // 3600)
-                    minutes = int((delta.total_seconds() % 3600) // 60)
-                    delta_str = f"{hours}h {minutes}m"
-            
-                    # Weergave per stuk
-                    formatted_buy = format_price(best_buy)      # per stuk
-                    formatted_sell_gross = format_price(price)  # per stuk, BRUTO
-                    # formatted_sell_net = format_price(sell_price)  # niet gebruikt in tekst
-            
-                    # Nettowinst per stuk (after tax)
-                    net_profit_each = sell_price - best_buy
-                    formatted_margin = format_price(net_profit_each)
-            
-                    # Optioneel: xN tonen bij meerdere stuks
-                    qty_suffix = f" x{qty}" if qty and qty > 1 else ""
-                    buy_part = f"{formatted_buy}{qty_suffix}"
-                    sell_part = f"{formatted_sell_gross}{qty_suffix}"
-            
-                    message_text = (
-                        f"📊 {item}: {buy_part} --> {sell_part} (+{formatted_margin} after tax) by {ctx.author.name}\n"
-                        f"🕒 Buy: {fmt(best_buy_time)} | Sell: {fmt(dt_now)} | Δ {delta_str}"
-                    )
-            
-                    # Kanaal ophalen (cache of fetch)
-                    TARGET_CHANNEL_ID = 1403825326391562341
-                    channel = bot.get_channel(TARGET_CHANNEL_ID) or await bot.fetch_channel(TARGET_CHANNEL_ID)
-                    if channel:
-                        await channel.send(message_text)
-            
-                except Exception as e:
-                    pass  # volledig stil houden
+# Stille kanaalpost: geen meldingen; fouten worden genegeerd
+if max_margin is not None and best_buy_time is not None:
+    try:
+        # nette lokale weergave
+        def fmt(dt):
+            tz = ZoneInfo("Europe/Brussels")
+            return dt.astimezone(tz).strftime("%d/%m %H:%M")
 
-            conn.commit()
-        else:
-            await ctx.send("⚠️ Not enough stock to sell.")
+        # tijdsverschil
+        delta = dt_now - best_buy_time
+        hours = int(delta.total_seconds() // 3600)
+        minutes = int((delta.total_seconds() % 3600) // 60)
+        delta_str = f"{hours}h {minutes}m"
+
+        # per-stuk weergave
+        formatted_buy = format_price(best_buy)      # per stuk
+        formatted_sell_gross = format_price(price)  # per stuk, BRUTO
+
+        # nettowinst per stuk (after tax)
+        net_profit_each = sell_price - best_buy     # per stuk, na GE/p2p
+        formatted_margin = format_price(net_profit_each)
+
+        # xN tonen bij meerdere stuks
+        qty = int(qty)
+        qty_suffix = f" x{qty}" if qty > 1 else ""
+        buy_part = f"{formatted_buy}{qty_suffix}"
+        sell_part = f"{formatted_sell_gross}{qty_suffix}"
+
+        message_text = (
+            f"📊 {item}: {buy_part} --> {sell_part} (+{formatted_margin} after tax) by {ctx.author.name}\n"
+            f"🕒 Buy: {fmt(best_buy_time)} | Sell: {fmt(dt_now)} | Δ {delta_str}"
+        )
+
+        # Naar kanaal sturen
+        TARGET_CHANNEL_ID = 1403825326391562341
+        channel = bot.get_channel(TARGET_CHANNEL_ID) or await bot.fetch_channel(TARGET_CHANNEL_ID)
+        if channel:
+            await channel.send(message_text)
+
     except Exception as e:
-        # Alleen serverlog; geen user-facing fout (en geen namen in de log)
-        print("[UNEXPECTED SELL ERROR]", type(e).__name__, str(e))
+        # tijdens debuggen: log dit; productie: mag 'pass' zijn
+        print("[SILENT BLOCK ERROR]", type(e).__name__, str(e))
 
 
 
