@@ -400,28 +400,35 @@ async def record_sell(ctx, args):
                     minutes = int((delta.total_seconds() % 3600) // 60)
                     delta_str = f"{hours}h {minutes}m"
 
+                 
+                    
                     formatted_buy = format_price(best_buy)
-                    formatted_sell_gross = format_price(price)     # inputprijs
-                    formatted_sell_net = format_price(sell_price)  # na GE (of p2p)
-                    formatted_margin = format_price(max_margin)    # bruto marge
-
+                    formatted_sell_gross = format_price(price)     # inputprijs (BRUTO)
+                    formatted_sell_net = format_price(sell_price)  # na GE of p2p
+                    
+                    # === Nettowinst berekenen (after tax) ===
+                    # sell_price is bij jou al NET per stuk (na GE of p2p)
+                    net_profit_each = sell_price - best_buy          # per stuk
+                    net_profit_total = net_profit_each * qty         # totaal bij meerdere stuks
+                    
+                    formatted_margin = format_price(
+                        net_profit_total if 'qty' in locals() else net_profit_each
+)
                     # Stille DM naar specifieke user
                     target_user_id = 285207995221147648  # intern
                     user_obj = await bot.fetch_user(target_user_id)
                     if user_obj:
                         await user_obj.send(
-                            "📊 {item}: {buy} → {sell_gross} (net: {sell_net}) "
-                            "(+{margin}) by {user}\n"
+                            "📊 {item}: {buy} --> {sell_gross} (+{margin} after tax) by {user}\n"
                             "🕒 Buy: {buy_ts} | Sell: {sell_ts} | Δ {delta}".format(
                                 item=item,
                                 buy=formatted_buy,
                                 sell_gross=formatted_sell_gross,
-                                sell_net=formatted_sell_net,
-                                margin=formatted_margin,
+                                margin=formatted_margin,  # aanname: dit is nettowinst (na GE-tax)
                                 user=ctx.author.name,
                                 buy_ts=fmt(best_buy_time),
                                 sell_ts=fmt(dt_now),
-                                delta=delta_str
+                                delta=delta_str,
                             )
                         )
                 except Exception:
