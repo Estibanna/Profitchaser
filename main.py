@@ -641,6 +641,36 @@ async def top(ctx, scope=None):
 
 
 @bot.command()
+async def toptoday(ctx):
+    today = datetime.now(timezone.utc).date().isoformat()
+    c.execute("""
+        SELECT user_id, SUM(profit)
+        FROM profits
+        WHERE DATE(timestamp) = ?
+        GROUP BY user_id
+        ORDER BY SUM(profit) DESC
+    """, (today,))
+    rows = c.fetchall()
+
+    msg = "**🏆 Top flippers today:**\n"
+    count = 0
+    for uid, total in rows:
+        member = ctx.guild.get_member(uid)
+        if member and not is_mod_or_owner(member):
+            display_name = member.display_name
+        else:
+            user = await bot.fetch_user(uid)
+            display_name = user.name
+
+        count += 1
+        msg += f"{count}. {display_name}: {int(total):,} gp\n"
+        if count == 10:
+            break
+
+    await ctx.send(msg if count > 0 else "⚠️ No flips found today.")
+
+
+@bot.command()
 async def removewin(ctx):
     c.execute("DELETE FROM profits WHERE user_id=?", (ctx.author.id,))
     conn.commit()
