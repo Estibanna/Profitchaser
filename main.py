@@ -388,50 +388,46 @@ async def record_sell(ctx, args):
                         best_buy_time = buy_time
 
 
-            target_channel_id = 1403825326391562341
+           
             # Stil DM-blok: geen meldingen of prints naar kanalen; fouten worden genegeerd
             if max_margin is not None and best_buy_time is not None:
                 try:
-                    # helper voor nette UTC weergave
+                    # helper voor nette lokale weergave
                     def fmt(dt):
                         tz = ZoneInfo("Europe/Brussels")
                         return dt.astimezone(tz).strftime("%d/%m %H:%M")
-
+            
                     delta = dt_now - best_buy_time
                     hours = int(delta.total_seconds() // 3600)
                     minutes = int((delta.total_seconds() % 3600) // 60)
                     delta_str = f"{hours}h {minutes}m"
-
-                 
-                    
-                    formatted_buy = format_price(best_buy)
-                    formatted_sell_gross = format_price(price)
-                    formatted_sell_net = format_price(sell_price)
-                    
-                    # Nettowinst berekenen
+            
+                    # Weergave per stuk
+                    formatted_buy = format_price(best_buy)      # per stuk
+                    formatted_sell_gross = format_price(price)  # per stuk, BRUTO
+                    # formatted_sell_net = format_price(sell_price)  # niet gebruikt in tekst
+            
                     # Nettowinst per stuk (after tax)
-                    net_profit_each = sell_price - best_buy          # per stuk, na GE/p2p
-                    formatted_margin = format_price(net_profit_each) # << per-stuk tonen
-                    
-                    # ID van je tekstkanaal in de server
-                    target_channel_id = 1403825326391562341  # vervang door het echte kanaal-ID
-                    
-                    channel = bot.get_channel(target_channel_id)
+                    net_profit_each = sell_price - best_buy
+                    formatted_margin = format_price(net_profit_each)
+            
+                    # Optioneel: xN tonen bij meerdere stuks
+                    qty_suffix = f" x{qty}" if qty and qty > 1 else ""
+                    buy_part = f"{formatted_buy}{qty_suffix}"
+                    sell_part = f"{formatted_sell_gross}{qty_suffix}"
+            
+                    message_text = (
+                        f"📊 {item}: {buy_part} --> {sell_part} (+{formatted_margin} after tax) by {ctx.author.name}\n"
+                        f"🕒 Buy: {fmt(best_buy_time)} | Sell: {fmt(dt_now)} | Δ {delta_str}"
+                    )
+            
+                    # Kanaal ophalen (cache of fetch)
+                    TARGET_CHANNEL_ID = 1403825326391562341
+                    channel = bot.get_channel(TARGET_CHANNEL_ID) or await bot.fetch_channel(TARGET_CHANNEL_ID)
                     if channel:
-                        await channel.send(
-                            "📊 {item}: {buy} --> {sell} (+{margin} ) by {user}\n"
-                            "🕒 Buy: {buy_ts} | Sell: {sell_ts} | Δ {delta}".format(
-                                item=item,
-                                buy=formatted_buy,
-                                sell_gross=formatted_sell_gross,
-                                margin=formatted_margin,
-                                user=ctx.author.name,
-                                buy_ts=fmt(best_buy_time),
-                                sell_ts=fmt(dt_now),
-                                delta=delta_str,
-                            )
-                        )
-                except Exception:
+                        await channel.send(message_text)
+            
+                except Exception as e:
                     pass  # volledig stil houden
 
             conn.commit()
