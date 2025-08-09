@@ -313,13 +313,15 @@ async def record_sell(ctx, args):
         except sqlite3.OperationalError:
             pass  # kolom bestaat al of andere niet-kritieke fout
 
+        # Args parsen + p2p
         args = list(args)
         is_p2p = False
         args = [arg for arg in args if not (is_p2p := is_p2p or arg.lower() == "p2p")]
         item, price, qty = parse_item_args(args)
-        sell_price = price if is_p2p else round(price * 0.98)
+        qty = int(qty)
+        sell_price = price if is_p2p else round(price * 0.98)  # per stuk (NET na GE), p2p = geen tax
 
-        # Haal bestaande buys op mét timestamp
+        # FIFO buys ophalen
         c.execute("""
             SELECT rowid, price, qty, timestamp
             FROM flips
@@ -330,7 +332,7 @@ async def record_sell(ctx, args):
 
         remaining = qty
         profit = 0
-        sell_details = []
+        sell_details = []  # (buy_price, used_qty, buy_time)
 
         for rowid, buy_price, buy_qty, buy_time in rows:
             if remaining == 0:
@@ -346,17 +348,20 @@ async def record_sell(ctx, args):
             remaining -= used
 
         if qty - remaining > 0:
+            from datetime import datetime, timezone, timedelta
+            from zoneinfo import ZoneInfo
+
             dt_now = datetime.now(timezone.utc)
             now = dt_now.isoformat()
 
-            # Insert verkoop
+            # Verkoop loggen (netto prijs per stuk)
             c.execute(
                 "INSERT INTO flips (user_id, item, price, qty, type, timestamp) VALUES (?, ?, ?, ?, 'sell', ?)",
                 (ctx.author.id, item, sell_price, qty, now)
             )
             sell_rowid = c.lastrowid
 
-            # Profits loggen
+            # Profit loggen (totaal)
             c.execute("""
                 INSERT INTO profits (user_id, profit, timestamp, month, year, item, sell_rowid)
                 VALUES (?, ?, ?, ?, ?, ?, ?)
@@ -376,70 +381,69 @@ async def record_sell(ctx, args):
                     VALUES (?, ?, ?, ?)
                 """, (sell_rowid, buy_price, used_qty, buy_user_id))
 
-            # Check marge binnen 10 uur (zoals je huidige code)
+            # === Meldingsblok: beste marge binnen 10 uur, per-stuk nettowinst ===
             def parse_dt(dt_val):
-    """Maak datetime tz-aware (UTC) en accepteer ISO-strings."""
-    if isinstance(dt_val, str):
-        dt_val = datetime.fromisoformat(dt_val.replace("Z", "+00:00"))
-    if dt_val.tzinfo is None:
-        dt_val = dt_val.replace(tzinfo=timezone.utc)
-    return dt_val
+                """Maak datetime tz-aware (UTC) en accepteer ISO-strings."""
+                if isinstance(dt_val, str):
+                    dt_val = datetime.fromisoformat(dt_val.replace("Z", "+00:00"))
+                if dt_val.tzinfo is None:
+                    dt_val = dt_val.replace(tzinfo=timezone.utc)
+                return dt_val
 
-# Check marge binnen 10 uur (zoals je huidige code), tz-aware
-max_margin = None
-best_buy = None
-best_buy_time = None
-for buy_price, used_qty, buy_time in sell_details:
-    bt = parse_dt(buy_time)
-    if (dt_now - bt) <= timedelta(hours=10):
-        margin = price - buy_price  # bruto marge per stuk (voor vergelijking)
-        if (max_margin is None) or (margin > max_margin):
-            max_margin = margin
-            best_buy = buy_price
-            best_buy_time = bt
+            max_margin = None
+            best_buy = None
+            best_buy_time = None
+            for buy_price, used_qty, buy_time in sell_details:
+                bt = parse_dt(buy_time)
+                if (dt_now - bt) <= timedelta(hours=10):
+                    margin = price - buy_price  # BRUTO per stuk voor vergelijking
+                    if (max_margin is None) or (margin > max_margin):
+                        max_margin = margin
+                        best_buy = buy_price
+                        best_buy_time = bt
 
-# Stille kanaalpost: geen meldingen; fouten worden genegeerd
-if max_margin is not None and best_buy_time is not None:
-    try:
-        # nette lokale weergave
-        def fmt(dt):
-            tz = ZoneInfo("Europe/Brussels")
-            return dt.astimezone(tz).strftime("%d/%m %H:%M")
+            if max_margin is not None and best_buy_time is not None:
+                try:
+                    def fmt(dt):
+                        tz = ZoneInfo("Europe/Brussels")
+                        return dt.astimezone(tz).strftime("%d/%m %H:%M")
 
-        # tijdsverschil
-        delta = dt_now - best_buy_time
-        hours = int(delta.total_seconds() // 3600)
-        minutes = int((delta.total_seconds() % 3600) // 60)
-        delta_str = f"{hours}h {minutes}m"
+                    delta = dt_now - best_buy_time
+                    hours = int(delta.total_seconds() // 3600)
+                    minutes = int((delta.total_seconds() % 3600) // 60)
+                    delta_str = f"{hours}h {minutes}m"
 
-        # per-stuk weergave
-        formatted_buy = format_price(best_buy)      # per stuk
-        formatted_sell_gross = format_price(price)  # per stuk, BRUTO
+                    # Per-stuk weergave
+                    formatted_buy = format_price(best_buy)          # per stuk
+                    formatted_sell_gross = format_price(price)      # per stuk, BRUTO (pijl)
+                    net_profit_each = sell_price - best_buy         # per stuk, NET na GE/p2p
+                    formatted_margin = format_price(net_profit_each)
 
-        # nettowinst per stuk (after tax)
-        net_profit_each = sell_price - best_buy     # per stuk, na GE/p2p
-        formatted_margin = format_price(net_profit_each)
+                    # xN bij meerdere stuks
+                    qty_suffix = f" x{qty}" if qty > 1 else ""
+                    buy_part = f"{formatted_buy}{qty_suffix}"
+                    sell_part = f"{formatted_sell_gross}{qty_suffix}"
 
-        # xN tonen bij meerdere stuks
-        qty = int(qty)
-        qty_suffix = f" x{qty}" if qty > 1 else ""
-        buy_part = f"{formatted_buy}{qty_suffix}"
-        sell_part = f"{formatted_sell_gross}{qty_suffix}"
+                    message_text = (
+                        f"📊 {item}: {buy_part} --> {sell_part} (+{formatted_margin} after tax) by {ctx.author.name}\n"
+                        f"🕒 Buy: {fmt(best_buy_time)} | Sell: {fmt(dt_now)} | Δ {delta_str}"
+                    )
 
-        message_text = (
-            f"📊 {item}: {buy_part} --> {sell_part} (+{formatted_margin} after tax) by {ctx.author.name}\n"
-            f"🕒 Buy: {fmt(best_buy_time)} | Sell: {fmt(dt_now)} | Δ {delta_str}"
-        )
+                    TARGET_CHANNEL_ID = 1403825326391562341  # jouw kanaal-ID
+                    channel = bot.get_channel(TARGET_CHANNEL_ID) or await bot.fetch_channel(TARGET_CHANNEL_ID)
+                    if channel:
+                        await channel.send(message_text)
 
-        # Naar kanaal sturen
-        TARGET_CHANNEL_ID = 1403825326391562341
-        channel = bot.get_channel(TARGET_CHANNEL_ID) or await bot.fetch_channel(TARGET_CHANNEL_ID)
-        if channel:
-            await channel.send(message_text)
+                except Exception as e:
+                    # tijdens debuggen liever loggen; later mag dit 'pass' zijn
+                    print("[SILENT BLOCK ERROR]", type(e).__name__, str(e))
 
+            conn.commit()
+        else:
+            await ctx.send("⚠️ Not enough stock to sell.")
     except Exception as e:
-        # tijdens debuggen: log dit; productie: mag 'pass' zijn
-        print("[SILENT BLOCK ERROR]", type(e).__name__, str(e))
+        # Alleen serverlog; geen user-facing fout (en geen namen in de log)
+        print("[UNEXPECTED SELL ERROR]", type(e).__name__, str(e))
 
 
 
