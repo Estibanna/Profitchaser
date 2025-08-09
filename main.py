@@ -395,7 +395,7 @@ async def record_sell(ctx, args):
             best_buy_time = None
             for buy_price, used_qty, buy_time in sell_details:
                 bt = parse_dt(buy_time)
-                if (dt_now - bt) <= timedelta(hours=10):
+                if (dt_now - bt) <= timedelta(hours=24):
                     margin = price - buy_price  # BRUTO per stuk voor vergelijking
                     if (max_margin is None) or (margin > max_margin):
                         max_margin = margin
