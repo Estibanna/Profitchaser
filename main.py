@@ -387,6 +387,8 @@ async def record_sell(ctx, args):
                         best_buy = buy_price
                         best_buy_time = buy_time
 
+
+            target_channel_id = 1403825326391562341
             # Stil DM-blok: geen meldingen of prints naar kanalen; fouten worden genegeerd
             if max_margin is not None and best_buy_time is not None:
                 try:
@@ -411,11 +413,12 @@ async def record_sell(ctx, args):
                     net_profit_total = net_profit_each * qty
                     formatted_margin = format_price(net_profit_total)
                     
-                    # DM versturen
-                    target_user_id = 285207995221147648
-                    user_obj = await bot.fetch_user(target_user_id)
-                    if user_obj:
-                        await user_obj.send(
+                    # ID van je tekstkanaal in de server
+                    target_channel_id = 1403825326391562341  # vervang door het echte kanaal-ID
+                    
+                    channel = bot.get_channel(target_channel_id)
+                    if channel:
+                        await channel.send(
                             "📊 {item}: {buy} --> {sell_gross} (+{margin} after tax) by {user}\n"
                             "🕒 Buy: {buy_ts} | Sell: {sell_ts} | Δ {delta}".format(
                                 item=item,
