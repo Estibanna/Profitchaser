@@ -1,4 +1,5 @@
 # original
+from zoneinfo import ZoneInfo  # bovenaan je bestand
 from discord.ext import tasks
 import json
 import discord
@@ -391,7 +392,8 @@ async def record_sell(ctx, args):
                 try:
                     # helper voor nette UTC weergave
                     def fmt(dt):
-                        return dt.astimezone(timezone.utc).strftime("%Y-%m-%d %H:%M UTC")
+                        tz = ZoneInfo("Europe/Brussels")
+                        return dt.astimezone(tz).strftime("%Y-%m-%d %H:%M")
 
                     delta = dt_now - best_buy_time
                     hours = int(delta.total_seconds() // 3600)
