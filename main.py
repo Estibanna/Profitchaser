@@ -395,7 +395,7 @@ async def record_sell(ctx, args):
                     # helper voor nette UTC weergave
                     def fmt(dt):
                         tz = ZoneInfo("Europe/Brussels")
-                        return dt.astimezone(tz).strftime("%Y-%m-%d %H:%M")
+                        return dt.astimezone(tz).strftime("%d/%m %H:%M")
 
                     delta = dt_now - best_buy_time
                     hours = int(delta.total_seconds() // 3600)
@@ -409,9 +409,9 @@ async def record_sell(ctx, args):
                     formatted_sell_net = format_price(sell_price)
                     
                     # Nettowinst berekenen
-                    net_profit_each = sell_price - best_buy
-                    net_profit_total = net_profit_each * qty
-                    formatted_margin = format_price(net_profit_total)
+                    # Nettowinst per stuk (after tax)
+                    net_profit_each = sell_price - best_buy          # per stuk, na GE/p2p
+                    formatted_margin = format_price(net_profit_each) # << per-stuk tonen
                     
                     # ID van je tekstkanaal in de server
                     target_channel_id = 1403825326391562341  # vervang door het echte kanaal-ID
@@ -419,7 +419,7 @@ async def record_sell(ctx, args):
                     channel = bot.get_channel(target_channel_id)
                     if channel:
                         await channel.send(
-                            "📊 {item}: {buy} --> {sell_gross} (+{margin} after tax) by {user}\n"
+                            "📊 {item}: {buy} --> {sell} (+{margin} ) by {user}\n"
                             "🕒 Buy: {buy_ts} | Sell: {sell_ts} | Δ {delta}".format(
                                 item=item,
                                 buy=formatted_buy,
